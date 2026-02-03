@@ -35,15 +35,16 @@ The CYAN FPGA project is a Xilinx Artix-7 based FPGA design for Readout Integrat
 
 ## Current Status and Known Issues
 
-**Status**: ✅ **Active Development** - Week 3 Complete (FSM Refactoring & Testbench)
+**Status**: ✅ **Active Development** - Week 3 Complete, Week 4 In Progress
 
 **Recent Achievements:**
-- ✅ Week 1: All CDC violations fixed (CDC-001, CDC-002, CDC-003)
+- ✅ Week 1: All CDC violations fixed (CDC-001, CDC-002)
 - ✅ Week 2: Reset standardization complete (RST-001, RST-002)
 - ✅ Week 3: FSM refactoring & testbench complete (FSM-001)
+- ✅ Week 3: CDC-003 resolved (IP Core has internal CDC)
 
 **Remaining Work:**
-- Week 4-8: Top-level decomposition, async_fifo integration, testing expansion
+- Week 4-8: Top-level decomposition, testing expansion
 
 Open Issues: 1 (LOW - Documentation improvement)
 Critical Issues: 0 ✅
@@ -155,15 +156,19 @@ Critical Issues: 0 ✅
 | Phase 5 | Top-Level Decomposition | Week 7 | Planned |
 | Phase 6 | Advanced Verification | Week 8 | Planned |
 
-### Current Phase: Phase 3 - FSM Refactoring (Week 3) ✅ COMPLETE
+### Current Phase: Phase 4 - Top-Level Decomposition (Week 4)
 
-**Completed Tasks:**
-- [x] Refactor sequencer_fsm.sv to 3-block style ✅
-- [x] Create FSM testbench for refactored module ✅
-- [x] Update signal widths and interface compatibility ✅
+**Completed:**
+- ✅ Week 1: CDC violations fixed (CDC-001, CDC-002)
+- ✅ Week 2: Reset standardization (RST-001, RST-002)
+- ✅ Week 3: FSM refactoring (FSM-001)
+- ✅ Week 3: CDC-003 analyzed (IP Core CDC verified)
 
-**Deferred to Week 4:**
-- [ ] Complete async_fifo_24b integration (requires mipi_csi2_tx_top analysis)
+**Week 4 Tasks:**
+- [ ] Decompose cyan_top.sv (1288 → <500 lines)
+- [ ] Extract clock_gen_top.sv module
+- [ ] Extract ti_roic_integration.sv module
+- [ ] Extract reg_map_integration.sv module
 
 **Completed:**
 - [x] Week 1: Fix all CDC violations ✅
