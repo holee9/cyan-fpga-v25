@@ -35,14 +35,15 @@ The CYAN FPGA project is a Xilinx Artix-7 based FPGA design for Readout Integrat
 
 ## Current Status and Known Issues
 
-**Status**: ✅ **Active Development** - Week 2 Complete (CDC & Reset Standardization Done)
+**Status**: ✅ **Active Development** - Week 3 In Progress (FSM Refactoring)
 
 **Recent Achievements:**
 - ✅ Week 1: All CDC violations fixed (CDC-001, CDC-002, CDC-003)
 - ✅ Week 2: Reset standardization complete (RST-001, RST-002)
+- ✅ Week 3: FSM refactoring complete (FSM-001)
 
 **Remaining Work:**
-- Week 3-8: FSM refactoring, top-level decomposition, testing expansion
+- Week 4-8: Top-level decomposition, testing expansion
 
 Open Issues: 1 (LOW - Documentation improvement)
 Critical Issues: 0 ✅
@@ -56,12 +57,13 @@ Critical Issues: 0 ✅
 | CDC-003 | MIPI Data CDC | ✅ Fixed | #1 | async_fifo_24b module created |
 | RST-001 | Reset Inconsistency | ✅ Fixed | #1 | reset_sync modules, active-LOW standard |
 | RST-002 | Multiple Async Resets | ✅ Fixed | #1 | Single synchronized reset per domain |
+| FSM-001 | Non-Standard FSM | ✅ Fixed | #2 | 3-block FSM refactoring, 577→490 lines |
 
 ### Open Issues
 
 | Issue ID | Category | Severity | Impact | Notes |
 |----------|----------|----------|--------|-------|
-| FSM-001 | Non-Standard FSM | MEDIUM | Maintainability | Planned for Week 4 |
+| *None* | - | - | - | All critical and high priority issues resolved ✅ |
 
 ### Low Priority Issues
 
@@ -72,12 +74,12 @@ Critical Issues: 0 ✅
 
 ### Quality Metrics (Progress)
 
-| Metric | Week 0 | Week 2 | Target (Final) | Status |
-|--------|--------|--------|----------------|--------|
-| CDC Violations | 8+ | 0 ✅ | 0 | ACHIEVED |
-| Reset Consistency | 30% | 100% ✅ | 100% | ACHIEVED |
-| Test Coverage | 23% | 23% | >70% | In Progress (Week 6) |
-| FSM Standard Compliance | 0% | 0% | 100% | Planned (Week 4) |
+| Metric | Week 0 | Week 2 | Week 3 | Target (Final) | Status |
+|--------|--------|--------|--------|----------------|--------|
+| CDC Violations | 8+ | 0 ✅ | 0 ✅ | 0 | ACHIEVED |
+| Reset Consistency | 30% | 100% ✅ | 100% ✅ | 100% | ACHIEVED |
+| FSM Standard Compliance | 0% | 0% | 100% ✅ | 100% | ACHIEVED |
+| Test Coverage | 23% | 23% | 23% | >70% | Planned (Week 6) |
 
 **What needs to be done?** See IMPROVEMENT_PLAN.md for complete roadmap.
 
@@ -156,7 +158,7 @@ Critical Issues: 0 ✅
 ### Current Phase: Phase 3 - FSM Refactoring (Week 3)
 
 **Key Tasks:**
-- [ ] Refactor sequencer_fsm.sv to 3-block style
+- [x] Refactor sequencer_fsm.sv to 3-block style ✅
 - [ ] Complete async_fifo_24b integration
 - [ ] Create FSM testbenches
 - [ ] Add assertions and coverage points
