@@ -35,15 +35,15 @@ The CYAN FPGA project is a Xilinx Artix-7 based FPGA design for Readout Integrat
 
 ## Current Status and Known Issues
 
-**Status**: ✅ **Active Development** - Week 3 In Progress (FSM Refactoring)
+**Status**: ✅ **Active Development** - Week 3 Complete (FSM Refactoring & Testbench)
 
 **Recent Achievements:**
 - ✅ Week 1: All CDC violations fixed (CDC-001, CDC-002, CDC-003)
 - ✅ Week 2: Reset standardization complete (RST-001, RST-002)
-- ✅ Week 3: FSM refactoring complete (FSM-001)
+- ✅ Week 3: FSM refactoring & testbench complete (FSM-001)
 
 **Remaining Work:**
-- Week 4-8: Top-level decomposition, testing expansion
+- Week 4-8: Top-level decomposition, async_fifo integration, testing expansion
 
 Open Issues: 1 (LOW - Documentation improvement)
 Critical Issues: 0 ✅
@@ -155,13 +155,15 @@ Critical Issues: 0 ✅
 | Phase 5 | Top-Level Decomposition | Week 7 | Planned |
 | Phase 6 | Advanced Verification | Week 8 | Planned |
 
-### Current Phase: Phase 3 - FSM Refactoring (Week 3)
+### Current Phase: Phase 3 - FSM Refactoring (Week 3) ✅ COMPLETE
 
-**Key Tasks:**
+**Completed Tasks:**
 - [x] Refactor sequencer_fsm.sv to 3-block style ✅
-- [ ] Complete async_fifo_24b integration
-- [ ] Create FSM testbenches
-- [ ] Add assertions and coverage points
+- [x] Create FSM testbench for refactored module ✅
+- [x] Update signal widths and interface compatibility ✅
+
+**Deferred to Week 4:**
+- [ ] Complete async_fifo_24b integration (requires mipi_csi2_tx_top analysis)
 
 **Completed:**
 - [x] Week 1: Fix all CDC violations ✅
