@@ -43,7 +43,7 @@ module init(
 	input				en_pwr_off				; //i,
 	input				en_pwr_dwn				; //i,
 
-	output	reg			init_rst				; //o,
+	output  logic           init_rst_n				; //o,
 	output	wire		pwr_init_step1			; //o,
 	output	wire		pwr_init_step2			; //o,
 	output	wire		pwr_init_step3			; //o,
@@ -145,8 +145,8 @@ module init(
 // Power On/Off sequence
 //----------------------------------------
 
-	always @(posedge fsm_clk or posedge reset) begin
-		if (reset) begin
+	always @(posedge fsm_clk or negedge reset) begin
+	if (~reset) begin
 			en_pwr_off_1d <= 1'b0;
 			en_pwr_off_2d <= 1'b0;
 		end else begin
@@ -300,8 +300,8 @@ module init(
 // Power Down sequence
 //----------------------------------------
 
-	always @(posedge fsm_clk or posedge reset) begin
-		if (reset) begin
+	always @(posedge fsm_clk or negedge reset) begin
+	if (~reset) begin
 			en_pwr_dwn_1d <= 1'b0;
 			en_pwr_dwn_2d <= 1'b0;
 		end else begin
@@ -435,8 +435,8 @@ module init(
 // System Reset
 //----------------------------------------
 
-	always @(posedge fsm_clk or posedge reset) begin
-		if (reset) begin
+	always @(posedge fsm_clk or negedge reset) begin
+	if (~reset) begin
 			init_step6_1d <= 1'b0;
 			init_step6_2d <= 1'b0;
 		end else begin
@@ -453,7 +453,7 @@ module init(
 		end
 	end
 
-	assign init_rst = sig_init_rst;
+	assign init_rst_n = ~sig_init_rst;
 	
 //----------------------------------------
 // ROIC Reset

@@ -7,6 +7,7 @@
 // Description: xdaq fpga top file - Converted from VHDL to SystemVerilog
 // Revision History:
 //    2025.05.19 - Initial
+//    2026.02.03 - Extracted TI ROIC integration to ti_roic_integration.sv
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -96,6 +97,13 @@ module cyan_top (
     logic s_clk_20mhz;
     logic s_clk_5mhz;
     logic s_clk_1mhz;
+
+    // Reset signals (from clock_gen_top)
+    logic rst_n_20mhz;
+    logic rst_n_100mhz;
+    logic rst_n_200mhz;
+    logic rst_n_eim;
+    logic s_clk_lock;
 
     // Module signals
     logic s_roic_reset;
@@ -211,31 +219,25 @@ module cyan_top (
 
     logic [15:0] tg_row_cnt;
     logic [10:0] tg_col_cnt;
-
-    // SPI signals
-    localparam int header = 2;
-    localparam int payload = 16;
-    localparam int addrsz = 14;
-    localparam int pktsz = 32; // (header + addrsz + payload) size of SPI packet
-
-    logic s_spi_start_flag;
-    logic s_addr_dv;
-    logic s_rw_out;
-
-    logic s_reg_read_index;
-
-    logic [addrsz-1:0] s_reg_addr;
-    logic [payload-1:0] s_reg_data;
-    logic s_reg_addr_index;
+    // SPI signals - now handled by reg_map_integration module
+    logic [15:0] s_reg_data;
     logic s_reg_data_index;
-
-    logic [15:0] reg_read_out;
-    logic read_data_en;
-    logic [15:0] s_reg_read_out_old;
-    logic [15:0] s_reg_read_out_new;
     logic s_read_data_en;
 
-    logic [15:0] s_reg_address;
+    // Unused gate outputs from reg_map_integration
+    logic unused_gate_mode1;
+    logic unused_gate_mode2;
+    logic unused_gate_cs1;
+    logic unused_gate_cs2;
+    logic unused_gate_sel;
+    logic unused_gate_ud;
+    logic unused_gate_stv_mode;
+    logic unused_gate_oepsn;
+    logic unused_stv_sel_h;
+    logic unused_stv_sel_l1;
+    logic unused_stv_sel_r1;
+    logic unused_stv_sel_l2;
+    logic unused_stv_sel_r2;
 
     logic [23:0] s_read_rx_data_a;
     logic [23:0] s_read_rx_data_b;
@@ -358,45 +360,28 @@ module cyan_top (
 
 
     ///////////////////////////////////////////////////////////////////////////////
-    // Week 2: Reset Synchronization (RST-001 Fix)
-    ///////////////////////////////////////////////////////////////////////////////
-    
-    // 20MHz domain reset synchronizer
-    reset_sync reset_sync_20mhz (
-        .clk    (s_clk_20mhz),
-        .nRST   (nRST),
-        .rst_n  (rst_n_20mhz)
-    );
 
-    // 100MHz domain reset synchronizer
-    reset_sync reset_sync_100mhz (
-        .clk    (s_clk_100mhz),
-        .nRST   (nRST),
-        .rst_n  (rst_n_100mhz)
-    );
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 4: Clock Generation Module (TOP-001 Phase 1)
+    /////////////////////////////////////////////////////////////////////////////
 
-    // 200MHz domain reset synchronizer
-    reset_sync reset_sync_200mhz (
-        .clk    (s_dphy_clk_200M),
-        .nRST   (nRST),
-        .rst_n  (rst_n_200mhz)
+    // Clock generation and reset synchronization
+    clock_gen_top clock_gen_inst (
+        .nRST            (nRST),
+        .MCLK_50M_p      (MCLK_50M_p),
+        .MCLK_50M_n      (MCLK_50M_n),
+        .s_clk_100mhz    (s_clk_100mhz),
+        .s_dphy_clk_200M (s_dphy_clk_200M),
+        .s_clk_20mhz     (s_clk_20mhz),
+        .eim_clk         (eim_clk),
+        .rst_n_20mhz     (rst_n_20mhz),
+        .rst_n_100mhz    (rst_n_100mhz),
+        .rst_n_200mhz    (rst_n_200mhz),
+        .rst_n_eim       (rst_n_eim),
+        .s_clk_lock      (s_clk_lock)
     );
-
-    // EIM clock domain reset (uses 100MHz)
-    assign rst_n_eim = rst_n_100mhz;
 
     // clk_ctrl module instantiation
-    clk_ctrl clk_inst0 (
-        .reset          (1'b0),
-        .clk_in1_p      (MCLK_50M_p),
-        .clk_in1_n      (MCLK_50M_n),
-        .locked         (s_clk_lock),
-        .dphy_clk       (s_dphy_clk_200M),  // 200MHz
-        .c0             (s_clk_100mhz),     // 100MHz
-        .c1             (s_clk_20mhz)      // 25MHz
-    );
-
-    assign eim_clk = s_clk_100mhz; // Use 100MHz clock for EIM
 
     // MIPI CSI2 TX module instantiation
     mipi_csi2_tx_top inst_mipi_csi2_tx (
@@ -445,126 +430,103 @@ module cyan_top (
         .roic_reset         (s_roic_reset)
     );
 
-    // SPI slave instantiation 
-    // Note: Placeholder, actual implementation needs to be provided    
-    spi_slave #(
-        .header     (header),
-        .payload    (payload),
-        .addrsz     (addrsz),
-        .pktsz      (pktsz)
-    )
-    host_if_inst (
-        .clk               (s_clk_100mhz),
-        .reset             (~rst_n_100mhz),
-        .SCLK              (SCLK),
-        .SSB               (SSB),
-        .MOSI              (MOSI),
-        .MISO              (s_miso),
-        .spi_start_flag    (s_spi_start_flag),
-        .read_data         (reg_read_out[payload-1:0]),
-        .read_en           (s_read_data_en),
-        .reg_addr          (s_reg_addr[addrsz-1:0]),
-        .addr_valid        (s_addr_dv),
-        .wr_data           (s_reg_data[payload-1:0]),
-        .wr_data_valid     (s_reg_data_index),
-        .rw_out            (s_rw_out)
+    //////////////////////////////////////////////////////////////////////////////
+    // Register Map Integration Module
+    //////////////////////////////////////////////////////////////////////////////
+    // Encapsulates SPI slave interface and register map logic
+    
+    reg_map_integration reg_map_inst (
+        .clk_100mhz                (s_clk_100mhz),
+        .clk_20mhz                 (s_clk_20mhz),
+        .rst_n_eim                 (rst_n_eim),
+        .rst_n_20mhz               (rst_n_20mhz),
+        .SCLK                      (SCLK),
+        .SSB                       (SSB),
+        .MOSI                      (MOSI),
+        .MISO                      (MISO),
+        .EXP_REQ                   (EXP_REQ),
+        .FSM_rst_index             (FSM_rst_index),
+        .FSM_wait_index            (FSM_wait_index),
+        .FSM_back_bias_index       (FSM_back_bias_index),
+        .FSM_flush_index           (FSM_flush_index),
+        .FSM_aed_read_index        (FSM_aed_read_index),
+        .FSM_exp_index             (FSM_exp_index),
+        .FSM_read_index            (FSM_read_index),
+        .FSM_idle_index            (FSM_idle_index),
+        .ready_to_get_image        (ready_to_get_image),
+        .aed_ready_done            (aed_ready_done),
+        .panel_stable_exist        (panel_stable_o),
+        .exp_read_exist            (s_exp_read_exist),
+        .reg_read_out              (),
+        .s_reg_data                (s_reg_data),
+        .reg_data_index            (s_reg_data_index),
+        .s_read_data_en            (s_read_data_en),
+        .en_pwr_dwn                (en_pwr_dwn),
+        .en_pwr_off                (en_pwr_off),
+        .system_rst                (system_rst),
+        .reset_fsm                 (reset_FSM),
+        .org_reset_fsm             (org_reset_FSM),
+        .dummy_get_image           (dummy_get_image),
+        .burst_get_image           (burst_get_image),
+        .get_dark                  (get_dark),
+        .get_bright                (get_bright),
+        .cmd_get_bright            (cmd_get_bright),
+        .en_panel_stable           (en_panel_stable),
+        .dsp_image_height          (dsp_image_height),
+        .max_v_count               (max_v_count),
+        .max_h_count               (max_h_count),
+        .csi2_word_count           (csi2_word_count),
+        .sig_gate_lr1              (sig_gate_lr1),
+        .sig_gate_lr2              (sig_gate_lr2),
+        .up_back_bias              (up_back_bias),
+        .down_back_bias            (down_back_bias),
+        .en_16bit_adc              (en_16bit_adc),
+        .en_test_pattern_col       (en_test_pattern_col),
+        .en_test_pattern_row       (en_test_pattern_row),
+        .en_test_roic_col          (en_test_roic_col),
+        .en_test_roic_row          (en_test_roic_row),
+        .exp_ack                   (EXP_ACK),
+        .dn_aed_gate_xao           (dn_aed_gate_xao),
+        .up_aed_gate_xao           (up_aed_gate_xao),
+        .state_led_ctr             (s_state_led_ctr),
+        .seq_lut_addr              (seq_lut_addr),
+        .seq_lut_data              (seq_lut_data),
+        .seq_lut_wr_en             (seq_lut_wr_en),
+        .seq_lut_read_data         (seq_lut_read_data),
+        .seq_lut_control           (seq_lut_control),
+        .seq_lut_config_done       (seq_lut_config_done),
+        .acq_mode                  (acq_mode),
+        .acq_expose_size           (acq_expose_size),
+        .seq_state_read            (seq_state_read),
+        .ti_roic_sync              (s_reg_roic_sync),
+        .ti_roic_tp_sel            (s_reg_tp_sel),
+        .ti_roic_str               (ti_roic_str),
+        .ti_roic_reg_addr          (ti_roic_reg_addr),
+        .ti_roic_reg_data          (ti_roic_reg_data),
+        .ti_roic_deser_reset       (ti_roic_deser_reset),
+        .ti_roic_deser_dly_tap_ld  (ti_roic_deser_dly_tap_ld),
+        .ti_roic_deser_dly_tap_in  (ti_roic_deser_dly_tap_in),
+        .ti_roic_deser_dly_data_ce (ti_roic_deser_dly_data_ce),
+        .ti_roic_deser_dly_data_inc(ti_roic_deser_dly_data_inc),
+        .ti_roic_deser_align_mode  (ti_roic_deser_align_mode),
+        .ti_roic_deser_align_start (ti_roic_deser_align_start),
+        .ti_roic_deser_shift_set   (ti_roic_deser_shift_set),
+        .ti_roic_deser_align_shift (ti_roic_deser_align_shift),
+        .ti_roic_deser_align_done  (ti_roic_deser_align_done),
+        .unused_gate_mode1         (unused_gate_mode1),
+        .unused_gate_mode2         (unused_gate_mode2),
+        .unused_gate_cs1           (unused_gate_cs1),
+        .unused_gate_cs2           (unused_gate_cs2),
+        .unused_gate_sel           (unused_gate_sel),
+        .unused_gate_ud            (unused_gate_ud),
+        .unused_gate_stv_mode      (unused_gate_stv_mode),
+        .unused_gate_oepsn         (unused_gate_oepsn),
+        .unused_stv_sel_h          (unused_stv_sel_h),
+        .unused_stv_sel_l1         (unused_stv_sel_l1),
+        .unused_stv_sel_r1         (unused_stv_sel_r1),
+        .unused_stv_sel_l2         (unused_stv_sel_l2),
+        .unused_stv_sel_r2         (unused_stv_sel_r2)
     );
-
-    assign s_reg_address = ({2'b00,s_reg_addr[addrsz-1:0]});
-    assign reg_read_out = s_reg_read_out_new;
-
-    reg_map_refacto reg_map_refact_inst (
-        .eim_clk                    (s_clk_100mhz),
-        .eim_rst                    (rst_n_eim),
-        .fsm_clk                    (s_clk_20mhz),
-        .rst                        (rst),
-        .exp_req                    (EXP_REQ),
-        .fsm_rst_index              (FSM_rst_index),
-        .fsm_init_index             (FSM_wait_index),
-        .fsm_back_bias_index        (FSM_back_bias_index),
-        .fsm_flush_index            (FSM_flush_index),
-        .fsm_aed_read_index         (FSM_aed_read_index),
-        .fsm_exp_index              (FSM_exp_index),
-        .fsm_read_index             (FSM_read_index),
-        .fsm_idle_index             (FSM_idle_index),
-        .ready_to_get_image         (ready_to_get_image),
-        .aed_ready_done             (aed_ready_done),
-        .panel_stable_exist         (panel_stable_o),
-        .exp_read_exist             (s_exp_read_exist),
-        .reg_read_index             (s_reg_read_index),
-        .reg_addr                   (s_reg_address),
-        .reg_data                   (s_reg_data),
-        .reg_data_index             (s_reg_data_index),
-        .reg_read_out               (s_reg_read_out_new),
-        .read_data_en               (s_read_data_en),
-        .en_pwr_dwn                 (en_pwr_dwn),
-        .en_pwr_off                 (en_pwr_off),
-        .system_rst                 (system_rst),
-        .reset_fsm                  (reset_FSM),
-        .org_reset_fsm              (org_reset_FSM),
-        .dummy_get_image            (dummy_get_image),
-        .burst_get_image            (burst_get_image),
-        .get_dark                   (get_dark),
-        .get_bright                 (get_bright),
-        .cmd_get_bright             (cmd_get_bright),
-        .en_panel_stable            (en_panel_stable),
-        .dsp_image_height           (dsp_image_height),
-        .max_v_count                (max_v_count),
-        .max_h_count                (max_h_count),
-        .csi2_word_count            (csi2_word_count),
-        .gate_mode1                 (),
-        .gate_mode2                 (),
-        .gate_cs1                   (),
-        .gate_cs2                   (),
-        .gate_sel                   (),
-        .gate_ud                    (),
-        .gate_stv_mode              (),
-        .gate_oepsn                 (),
-        .gate_lr1                   (sig_gate_lr1),
-        .gate_lr2                   (sig_gate_lr2),
-        .stv_sel_h                  (),
-        .stv_sel_l1                 (),
-        .stv_sel_r1                 (),
-        .stv_sel_l2                 (),
-        .stv_sel_r2                 (),
-        .up_back_bias               (up_back_bias),
-        .dn_back_bias               (down_back_bias),
-
-        .seq_lut_addr               (seq_lut_addr),
-        .seq_lut_data               (seq_lut_data),
-        .seq_lut_wr_en              (seq_lut_wr_en),
-        .seq_lut_read_data          (seq_lut_read_data),
-        .seq_lut_control            (seq_lut_control),
-        .seq_lut_config_done        (seq_lut_config_done),
-        .acq_mode                   (acq_mode),
-        .acq_expose_size            (acq_expose_size),
-        .seq_state_read             (seq_state_read),
-        // TI-ROIC Register signals
-        .ti_roic_sync               (s_reg_roic_sync),
-        .ti_roic_tp_sel             (s_reg_tp_sel),
-        .ti_roic_str                (ti_roic_str),
-        .ti_roic_reg_addr           (ti_roic_reg_addr),
-        .ti_roic_reg_data           (ti_roic_reg_data),
-        // TI-ROIC Deserializer signals
-        .ti_roic_deser_reset        (ti_roic_deser_reset),
-        .ti_roic_deser_dly_tap_ld   (ti_roic_deser_dly_tap_ld),
-        .ti_roic_deser_dly_tap_in   (ti_roic_deser_dly_tap_in),
-        .ti_roic_deser_dly_data_ce  (ti_roic_deser_dly_data_ce),
-        .ti_roic_deser_dly_data_inc (ti_roic_deser_dly_data_inc),
-        .ti_roic_deser_align_mode   (ti_roic_deser_align_mode),
-        .ti_roic_deser_align_start  (ti_roic_deser_align_start),
-        .ti_roic_deser_shift_set    (ti_roic_deser_shift_set),
-        .ti_roic_deser_align_shift  (ti_roic_deser_align_shift),
-        .ti_roic_deser_align_done   (ti_roic_deser_align_done),
-        .en_16bit_adc               (en_16bit_adc),
-        .en_test_pattern_col        (en_test_pattern_col),
-        .en_test_pattern_row        (en_test_pattern_row),
-        .en_test_roic_col           (en_test_roic_col),        
-        .en_test_roic_row           (en_test_roic_row),
-        .exp_ack                    (EXP_ACK),
-        .dn_aed_gate_xao            (dn_aed_gate_xao),
-        .up_aed_gate_xao            (up_aed_gate_xao),
-        .state_led_ctr              (s_state_led_ctr)
     );
 
     // assign disable_aed_read_xao = 1'b1; // For Gemini, AED read XAO is always enabled
@@ -743,13 +705,6 @@ module cyan_top (
     end
 
 
-    assign MISO = s_miso;
-
-    assign s_axis_video_tuser[0] = s_read_frame_start;
-
-    assign s_reg_addr_index = (s_rw_out == 1'b0 && s_addr_dv == 1'b1) ? 1'b1 : 1'b0;
-    assign s_reg_read_index = (s_rw_out == 1'b1 && s_addr_dv == 1'b1) ? 1'b1 : 1'b0;
-
     assign s_mask_stv = (s_sync_stv_mask_o == 1'b1) ? s_tg_stv : 1'b0;
 
     assign GF_CPV = s_tg_cpv;
@@ -774,18 +729,11 @@ module cyan_top (
     ///////////////////////////////////////////////////////////////////////////////
     
     // Internal control signals (reused)
-    logic system_rst;
-    logic init_rst;
-    logic org_reset_FSM;
-    
-    // Assign from internal control (now uses active-LOW)
-    assign system_rst = ~rst_n_20mhz;     // system_rst is active-HIGH internally
-    assign init_rst = ~rst_n_20mhz;        // init_rst is active-HIGH internally
-    assign org_reset_FSM = ~rst_n_20mhz;   // org_reset_FSM is active-HIGH internally
     
     // FSM driver reset (active-LOW)
     logic fsm_drv_rst;
     assign fsm_drv_rst = rst_n_20mhz & ~FSM_rst_index;
+    assign init_rst = ~rst_n_20mhz;        // init_rst is active-HIGH internally
 
 
     assign ROIC_TP_SEL  = ti_roic_tp_sel;
@@ -837,19 +785,7 @@ module cyan_top (
 
     //for debug signal
     logic dbg_even_odd_toggle_out;
-    logic dbg_channel_detected;
-    logic dbg_roic_even_odd;
-    logic dbg_roic_1st_channel;
-
-
-    logic s_rf_spi_sen;
-    logic [191:0] sdoutWord;
-    logic s_spiReady;
-    logic s_spidut_en_1d;
-    logic s_spidut_en_2d;
-
-    assign RF_SPI_SEN = {12{s_rf_spi_sen}};
-
+    // TI ROIC Integration signals
     logic s_IRST;
     logic s_SHR;
     logic s_SHS;
@@ -863,108 +799,69 @@ module cyan_top (
     logic s_DF_SM3;
     logic s_DF_SM4;
     logic s_DF_SM5;
+    logic s_rf_spi_sen;
 
-    /**
-     * @brief TI ROIC SPI for register set .
-     */
-    roic_spi ti_roic_spi_inst (
-        .reset      (deser_reset),
-        .clk        (s_clk_5mhz),
-        .address    (ti_roic_reg_addr[7:0]),
-        .data       (ti_roic_reg_data),
-        .DUT_EN     (ti_roic_reg_addr[15]),
-        .spiReady   (s_spiReady),
-        .DUT_SDOUT  (s_roic_sdio),
-        .DUT_SCLK   (RF_SPI_SCK),
-        .DUT_SDATA  (RF_SPI_SDI[0]),
-        .DUT_SEN    (s_rf_spi_sen),
-        .sdoutWord  (sdoutWord)
+    assign RF_SPI_SEN = {12{s_rf_spi_sen}};
+
+    // gen_sync_start is already in the 20MHz domain, direct connection
+    assign gen_sync_start_3ff = gen_sync_start;
+
+    //==========================================================================
+    // TI ROIC Integration Module
+    //   - Encapsulates TI ROIC SPI and Timing Generator
+    //   - Extracted from cyan_top.sv (2026-02-03)
+    //==========================================================================
+    ti_roic_integration ti_roic_integration_inst (
+        // Clocks and resets
+        .clk_5mhz              (s_clk_5mhz),
+        .clk_20mhz             (s_clk_20mhz),
+        .deser_reset_n         (deser_reset_n),
+
+        // TI ROIC control
+        .ti_roic_reg_addr      (ti_roic_reg_addr),
+        .ti_roic_reg_data      (ti_roic_reg_data),
+        .ti_roic_str           (ti_roic_str),
+
+        // Control inputs
+        .s_roic_sync_in        (s_roic_sync_in),
+        .s_roic_tp_sel         (s_roic_tp_sel),
+        .aed_detect_skip_oe    (s_aed_detect_skip_oe_o),
+        .fsm_read_index        (s_sync_fsm_read_index),
+        .gen_sync_start_3ff    (gen_sync_start_3ff),
+
+        // Counters
+        .tg_row_cnt            (tg_row_cnt),
+        .tg_col_cnt            (tg_col_cnt),
+
+        // SPI outputs
+        .s_roic_sdio           (s_roic_sdio),
+        .RF_SPI_SCK            (RF_SPI_SCK),
+        .RF_SPI_SDI            (RF_SPI_SDI[0]),
+        .s_rf_spi_sen          (s_rf_spi_sen),
+
+        // Timing outputs
+        .s_roic_sync_out       (s_roic_sync_out),
+        .s_roic_a_bz           (s_roic_a_bz),
+        .s_tg_stv              (s_tg_stv),
+        .s_tg_cpv              (s_tg_cpv),
+        .s_tg_oe               (s_tg_oe),
+
+        // Gate control outputs
+        .s_IRST                (s_IRST),
+        .s_SHR                 (s_SHR),
+        .s_SHS                 (s_SHS),
+        .s_LPF1                (s_LPF1),
+        .s_LPF2                (s_LPF2),
+        .s_TDEF                (s_TDEF),
+        .s_GATE_ON             (s_GATE_ON),
+        .s_DF_SM0              (s_DF_SM0),
+        .s_DF_SM1              (s_DF_SM1),
+        .s_DF_SM2              (s_DF_SM2),
+        .s_DF_SM3              (s_DF_SM3),
+        .s_DF_SM4              (s_DF_SM4),
+        .s_DF_SM5              (s_DF_SM5)
     );
 
-    always_ff @(posedge s_clk_5mhz or posedge deser_reset) begin
-        if (deser_reset) begin
-            s_spidut_en_1d <= 1'b0;
-            s_spidut_en_2d <= 1'b0;
-        end else begin
-            s_spidut_en_1d <= ti_roic_reg_addr[15];
-            s_spidut_en_2d <= s_spidut_en_1d;
-        end
-    end
-
-    assign s_spiReady = s_spidut_en_1d & ~s_spidut_en_2d;
-
-    // CDC-001 Fix: 3-stage synchronizer for gen_sync_start (20MHz -> 200MHz)
-    cdc_sync_3ff #(
-        .WIDTH       (1),
-        .RESET_VAL   (1'b0),
-        .ACTIVE_LOW  (1'b0)
-    ) cdc_gen_sync_start_inst (
-        .src_clk     (s_clk_20mhz),
-        .dst_clk     (s_clk_20mhz),   // Same domain, but 3-FF for MTBF
-        .rst         (rst),
-        .din         (gen_sync_start),
-        .dout        (gen_sync_start_3ff)
-    );
-
-    ti_roic_tg roic_tg_gen_int(
-        .clk                (s_clk_20mhz),
-        .rst                (deser_reset),
-        .str                (ti_roic_str),
-        .sync_in            (s_roic_sync_in),
-        .tp_sel             (s_roic_tp_sel),
-        .aed_detect_skip_oe (s_aed_detect_skip_oe_o),
-        .fsm_read_index     (s_sync_fsm_read_index),
-        .reg_en             (ti_roic_reg_addr[15]),
-        .reg_addr           (ti_roic_reg_addr[7:0]),
-        .reg_data           (ti_roic_reg_data),
-        .sync_start         (gen_sync_start_3ff),   // CDC-001: Use 3-stage synced
-        .readout_width      (),
-        .tg_row_cnt         (tg_row_cnt),
-        .tg_col_cnt         (tg_col_cnt),
-        .roic_sync_out      (s_roic_sync_out),
-        .roic_a_bz          (s_roic_a_bz),
-        //
-        .tg_stv             (s_tg_stv),
-        .tg_cpv             (s_tg_cpv),
-        .tg_oe              (s_tg_oe),
-        .v_sync             (),
-        .IRST               (s_IRST),
-        .SHR                (s_SHR),
-        .SHS                (s_SHS),
-        .LPF1               (s_LPF1),
-        .LPF2               (s_LPF2),
-        .TDEF               (s_TDEF),
-        .GATE_ON            (s_GATE_ON),
-        .DF_SM0             (s_DF_SM0),
-        .DF_SM1             (s_DF_SM1),
-        .DF_SM2             (s_DF_SM2),
-        .DF_SM3             (s_DF_SM3),
-        .DF_SM4             (s_DF_SM4),
-        .DF_SM5             (s_DF_SM5)
-    );
-
-
-    assign deser_reset = ti_roic_deser_reset;
-    assign align_to_fclk = ti_roic_deser_align_mode;
-    assign align_start = ti_roic_deser_align_start;
-
-    generate
-        always_ff @(posedge eim_clk or posedge s_reset) begin
-            if (s_reset) begin
-                for (int i = 0; i < 12; i++) begin
-                    extra_shift[i] = 4'd0;
-                    ti_roic_deser_align_shift[i] = 4'd0;
-                    ti_roic_deser_align_done[i] = 1'b0;
-                end
-            end else begin
-                for (int i = 0; i < 12; i++) begin
-                    extra_shift[i] = ti_roic_deser_shift_set[i];
-                    ti_roic_deser_align_shift[i] = shift_out[i];
-                    ti_roic_deser_align_done[i] = align_done[i];
-                end
-            end
-        end
-    endgenerate
 
         //     ti_roic_top #(
         //         .DATA_WIDTH    (WORD_SIZE),     // 24-bit data width
