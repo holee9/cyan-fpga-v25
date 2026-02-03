@@ -31,7 +31,7 @@
 module sequencer_fsm (
     // Clock and Reset
     input  logic                    clk,
-    input  logic                    reset_i,                    // Active high reset
+    input  logic                    reset_n_i,                  // Active-LOW reset
 
     // LUT RAM Interface (RST state only)
     input  logic                    config_done_i,              // Configuration done signal
@@ -224,12 +224,12 @@ module sequencer_fsm (
 
     // FSM Reset Logic
     // assign fsm_rst = (reset_i || (s_config_done_dly == 2'b01))  ? 1'b1 : 1'b0;
-    assign fsm_rst              = (reset_i || (s_config_done_dly[0]))  ? 1'b1 : 1'b0;
+    assign fsm_rst              = (~reset_n_i || (s_config_done_dly[0]))  ? 1'b1 : 1'b0;
     assign s_config_done_hi     = (s_config_done_dly == 2'b01) ? 1'b1 : 1'b0;
-    assign s_lut_addr_rst       = (reset_i || s_config_done_hi) ? 1'b1 : 1'b0;
+    assign s_lut_addr_rst       = (~reset_n_i || s_config_done_hi) ? 1'b1 : 1'b0;
 
-    always_ff @(posedge clk or posedge reset_i) begin
-        if (reset_i) begin
+    always_ff @(posedge clk or negedge reset_n_i) begin
+        if (~reset_n_i) begin
             reset_state_o           <= 1'b0;
             wait_o                  <= 1'b0;
             bias_enable_o           <= 1'b0;
@@ -250,8 +250,8 @@ module sequencer_fsm (
         end
     end
 
-    always_ff @(posedge clk or posedge reset_i) begin
-        if (reset_i) begin
+    always_ff @(posedge clk or negedge reset_n_i) begin
+        if (~reset_n_i) begin
             s_lut_wen_i             <= 1'b0;
 //            s_lut_rden_i            <= 1'b0;
             s_lut_addr_i            <= '0;
@@ -532,8 +532,8 @@ module sequencer_fsm (
     // debug output
     assign readout_wait = s_readout_wait;
 
-    always_ff @(posedge clk or posedge reset_i) begin
-        if (reset_i) begin
+    always_ff @(posedge clk or negedge reset_n_i) begin
+        if (~reset_n_i) begin
             s_iterate_count_index <= '{4{12'd0}};
         end else begin
             if (s_config_done_dly == 2'd2) begin
