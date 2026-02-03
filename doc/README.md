@@ -35,19 +35,33 @@ The CYAN FPGA project is a Xilinx Artix-7 based FPGA design for Readout Integrat
 
 ## Current Status and Known Issues
 
-**Status**: Development Phase with Known Issues
+**Status**: ✅ **Active Development** - Week 2 Complete (CDC & Reset Standardization Done)
 
-Critical Issues: 3 (HIGH/CRITICAL - Require Immediate Action)
-High Priority: 3 (MEDIUM - Planned for Phase 2)
-Low Priority: 2 (LOW - Backlog)
+**Recent Achievements:**
+- ✅ Week 1: All CDC violations fixed (CDC-001, CDC-002, CDC-003)
+- ✅ Week 2: Reset standardization complete (RST-001, RST-002)
 
-### Critical Issues
+**Remaining Work:**
+- Week 3-8: FSM refactoring, top-level decomposition, testing expansion
 
-| Issue ID | Category | Severity | Impact |
-|----------|----------|----------|--------|
-| CDC-001 | CDC Violation | CRITICAL | Metastability, data corruption |
-| CDC-002 | Missing Constraints | CRITICAL | Timing violations, unstable operation |
-| RST-001 | Reset Inconsistency | HIGH | Unpredictable initialization |
+Open Issues: 1 (LOW - Documentation improvement)
+Critical Issues: 0 ✅
+
+### Completed Issues ✅
+
+| Issue ID | Category | Status | PR | Solution |
+|----------|----------|--------|-----|----------|
+| CDC-001 | CDC Violation | ✅ Fixed | #1 | 3-stage synchronizer for gen_sync_start |
+| CDC-002 | Missing Constraints | ✅ Fixed | #1 | Clock groups + CDC false paths |
+| CDC-003 | MIPI Data CDC | ✅ Fixed | #1 | async_fifo_24b module created |
+| RST-001 | Reset Inconsistency | ✅ Fixed | #1 | reset_sync modules, active-LOW standard |
+| RST-002 | Multiple Async Resets | ✅ Fixed | #1 | Single synchronized reset per domain |
+
+### Open Issues
+
+| Issue ID | Category | Severity | Impact | Notes |
+|----------|----------|----------|--------|-------|
+| FSM-001 | Non-Standard FSM | MEDIUM | Maintainability | Planned for Week 4 |
 
 ### Low Priority Issues
 
@@ -56,14 +70,14 @@ Low Priority: 2 (LOW - Backlog)
 | TRI-001 | Tri-State Design | LOW | Documentation | Intentional design - add comments only |
 
 
-### Quality Metrics (Current vs Target)
+### Quality Metrics (Progress)
 
-| Metric | Current | Target (Phase 1) | Target (Final) |
-|--------|---------|------------------|----------------|
-| CDC Violations | 8+ | 0 | 0 |
-| Reset Consistency | 30% | 100% | 100% |
-| Test Coverage | 23% | 50% | 90% |
-| FSM Standard Compliance | 0% | 50% | 100% |
+| Metric | Week 0 | Week 2 | Target (Final) | Status |
+|--------|--------|--------|----------------|--------|
+| CDC Violations | 8+ | 0 ✅ | 0 | ACHIEVED |
+| Reset Consistency | 30% | 100% ✅ | 100% | ACHIEVED |
+| Test Coverage | 23% | 23% | >70% | In Progress (Week 6) |
+| FSM Standard Compliance | 0% | 0% | 100% | Planned (Week 4) |
 
 **What needs to be done?** See IMPROVEMENT_PLAN.md for complete roadmap.
 
@@ -132,19 +146,24 @@ Low Priority: 2 (LOW - Backlog)
 
 | Phase | Focus | Duration | Status |
 |-------|-------|----------|--------|
-| Phase 1 | Critical Safety | Week 1 | Not Started |
-| Phase 2 | Design Robustness | Weeks 2-3 | Planned |
-| Phase 3 | Quality Infrastructure | Weeks 4-6 | Planned |
-| Phase 4 | Optimization | Weeks 7-8 | Planned |
+| Phase 1 | Critical Safety (CDC) | Week 1 | ✅ COMPLETE |
+| Phase 2 | Reset Standardization | Week 2 | ✅ COMPLETE |
+| Phase 3 | FSM Refactoring | Weeks 3-4 | In Progress |
+| Phase 4 | Testing & Verification | Weeks 5-6 | Planned |
+| Phase 5 | Top-Level Decomposition | Week 7 | Planned |
+| Phase 6 | Advanced Verification | Week 8 | Planned |
 
-### Current Phase: Phase 1 - Critical Safety
+### Current Phase: Phase 3 - FSM Refactoring (Week 3)
 
 **Key Tasks:**
-- [ ] Fix all CDC violations (Days 1-3)
-- [ ] Add comprehensive timing constraints (Days 1-2)
-- [ ] Standardize reset strategy (Days 2-3)
-- [ ] Remove internal tri-state buses (Day 1)
-- [ ] Create CDC testbenches (Days 3-5)
+- [ ] Refactor sequencer_fsm.sv to 3-block style
+- [ ] Complete async_fifo_24b integration
+- [ ] Create FSM testbenches
+- [ ] Add assertions and coverage points
+
+**Completed:**
+- [x] Week 1: Fix all CDC violations ✅
+- [x] Week 2: Reset standardization ✅
 
 **Detailed roadmap**: See IMPROVEMENT_PLAN.md for complete task breakdown.
 
@@ -180,10 +199,11 @@ Low Priority: 2 (LOW - Backlog)
 4. Review TECHNICAL_REFERENCE.md for architecture (45 min)
 
 **What is the current status?**
-- Phase: Development with critical issues
-- CDC Violations: 8+ (require immediate fix)
-- Test Coverage: 23% (target: 90%)
-- Next Phase: Phase 1 - Critical Safety (Week 1)
+- Phase: Week 3 (FSM Refactoring) - Active Development
+- CDC Violations: 0 ✅ (Week 1 complete)
+- Reset Consistency: 100% ✅ (Week 2 complete)
+- Test Coverage: 23% → Target >70% (Week 6)
+- Next Phase: Complete FSM refactoring, expand testing
 
 **What needs to be done?**
 - Immediate: Fix CDC violations (see IMPROVEMENT_PLAN.md)
@@ -214,8 +234,8 @@ Low Priority: 2 (LOW - Backlog)
 ---
 
 **Project**: CYAN FPGA - Xilinx Artix-7 ROIC Controller
-**Document Version**: 2.0
-**Last Updated**: 2026-02-03
+**Document Version**: 2.1 (Week 2 Update)
+**Last Updated**: 2025-02-03 (Week 2 Complete)
 
 ---
 
