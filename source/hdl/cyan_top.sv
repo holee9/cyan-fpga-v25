@@ -97,6 +97,13 @@ module cyan_top (
     logic s_clk_5mhz;
     logic s_clk_1mhz;
 
+    // Reset signals (from clock_gen_top)
+    logic rst_n_20mhz;
+    logic rst_n_100mhz;
+    logic rst_n_200mhz;
+    logic rst_n_eim;
+    logic s_clk_lock;
+
     // Module signals
     logic s_roic_reset;
     logic s_back_bias;
@@ -358,45 +365,28 @@ module cyan_top (
 
 
     ///////////////////////////////////////////////////////////////////////////////
-    // Week 2: Reset Synchronization (RST-001 Fix)
-    ///////////////////////////////////////////////////////////////////////////////
-    
-    // 20MHz domain reset synchronizer
-    reset_sync reset_sync_20mhz (
-        .clk    (s_clk_20mhz),
-        .nRST   (nRST),
-        .rst_n  (rst_n_20mhz)
-    );
 
-    // 100MHz domain reset synchronizer
-    reset_sync reset_sync_100mhz (
-        .clk    (s_clk_100mhz),
-        .nRST   (nRST),
-        .rst_n  (rst_n_100mhz)
-    );
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 4: Clock Generation Module (TOP-001 Phase 1)
+    /////////////////////////////////////////////////////////////////////////////
 
-    // 200MHz domain reset synchronizer
-    reset_sync reset_sync_200mhz (
-        .clk    (s_dphy_clk_200M),
-        .nRST   (nRST),
-        .rst_n  (rst_n_200mhz)
+    // Clock generation and reset synchronization
+    clock_gen_top clock_gen_inst (
+        .nRST            (nRST),
+        .MCLK_50M_p      (MCLK_50M_p),
+        .MCLK_50M_n      (MCLK_50M_n),
+        .s_clk_100mhz    (s_clk_100mhz),
+        .s_dphy_clk_200M (s_dphy_clk_200M),
+        .s_clk_20mhz     (s_clk_20mhz),
+        .eim_clk         (eim_clk),
+        .rst_n_20mhz     (rst_n_20mhz),
+        .rst_n_100mhz    (rst_n_100mhz),
+        .rst_n_200mhz    (rst_n_200mhz),
+        .rst_n_eim       (rst_n_eim),
+        .s_clk_lock      (s_clk_lock)
     );
-
-    // EIM clock domain reset (uses 100MHz)
-    assign rst_n_eim = rst_n_100mhz;
 
     // clk_ctrl module instantiation
-    clk_ctrl clk_inst0 (
-        .reset          (1'b0),
-        .clk_in1_p      (MCLK_50M_p),
-        .clk_in1_n      (MCLK_50M_n),
-        .locked         (s_clk_lock),
-        .dphy_clk       (s_dphy_clk_200M),  // 200MHz
-        .c0             (s_clk_100mhz),     // 100MHz
-        .c1             (s_clk_20mhz)      // 25MHz
-    );
-
-    assign eim_clk = s_clk_100mhz; // Use 100MHz clock for EIM
 
     // MIPI CSI2 TX module instantiation
     mipi_csi2_tx_top inst_mipi_csi2_tx (
