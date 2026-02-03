@@ -11,6 +11,7 @@ module read_data_mux (
     
     input  logic        eim_clk,
     input  logic        eim_rst,
+    input  logic        rst_n_eim,  // Week 2: Synchronized reset from top level
 
 //    input  logic        seq_reset,
 
@@ -216,11 +217,22 @@ module read_data_mux (
     assign s_max_v_count = max_v_count;
 
 //
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge rst_hsync_cnt_dly or posedge hi_vsync or posedge tx_sys_rst) begin
-        if (!eim_rst || rst_hsync_cnt_dly || hi_vsync || tx_sys_rst) begin
+    ///////////////////////////////////////////////////////////////////////////////
+    // Week 2: RST-002 Fix - Single synchronized reset (multi-clock domain safe)
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // Generate internal reset conditions from control signals
+    logic internal_reset;
+    assign internal_reset = rst_hsync_cnt_dly || hi_vsync || tx_sys_rst;
+    
+    // h_count/v_count counter (RST-002: Fixed single async reset)
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
+        if (!rst_n_eim) begin
             s_h_count <= 16'h0000;
             s_v_count <= 16'h0000;
-        end else if (s_axis_tvalid && s_read_axis_tready) begin
+        end else if (internal_reset) begin
+            s_h_count <= 16'h0000;
+            s_v_count <= 16'h0000;
             if (s_h_count == (s_max_h_count - 1)) begin
                 if (s_v_count == (s_max_v_count - 1)) begin
                     s_h_count <= 16'h0000;
@@ -236,8 +248,8 @@ module read_data_mux (
     end
 
     // Dummy and exist_get_image control
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge hi_vsync) begin
-        if (!eim_rst || hi_vsync) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
+        if (!rst_n_eim) begin
             s_dummy_valid <= 1'b0;
             s_dummy_valid_count <= '0;
         end else begin
@@ -282,6 +294,7 @@ module read_data_mux (
                           s_dummy_valid : 1'b0;    // Write memory data logic for both test patterns and normal ROIC data
     
 
+    // Internal reset generation (maintains original logic)
     assign tx_eim_rst = (FSM_read_index_eim_1d && !FSM_read_index_eim_2d && !FSM_aed_read_index) ? 1'b1 : 1'b0;
     assign tx_sys_rst = (FSM_read_index_sys_1d && !FSM_read_index_sys_2d && !FSM_aed_read_index) ? 1'b1 : 1'b0;
 
@@ -354,7 +367,7 @@ module read_data_mux (
 //    assign s_max_read_mem_addr_offset = 10'b0110000000 + NUM_ROIC_CHANNEL;
 
 //    // Memory read address control
-//    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //        if (!eim_rst || tx_eim_rst) begin
 //            read_mem_addr_offset <= '0;
 //            read_mem_addr_offset_1d <= '0;
@@ -391,7 +404,7 @@ module read_data_mux (
     assign s_v_sync = (s_v_count > '0 && s_v_count <= s_max_v_count) ? 1'b1 : 1'b0;
     assign s_h_sync = (s_h_count > '0 && s_h_count <= s_max_h_count) ? 1'b1 : 1'b0;
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             s_axis_tlast <= 1'b0;
         end else begin
@@ -441,7 +454,7 @@ module read_data_mux (
 
 
     // Memory read control for all channels
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             read_mem <= '0;
             read_mem_1d <= '0;
@@ -495,7 +508,7 @@ module read_data_mux (
 //    // genvar i;
 //    generate
 //        for (i = 0; i < 12; i++) begin : gen_mem_addr_ctrl
-//            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //                if (!eim_rst || tx_eim_rst)
 //                    read_mem_addr[i] <= '0;
 //                else if (read_mem[i] & s_valid_read_mem) begin
@@ -510,7 +523,7 @@ module read_data_mux (
 
     
     // Memory read data output multiplexing
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             read_data_out_a <= '0;
             read_data_out_b <= '0;
@@ -582,7 +595,7 @@ module read_data_mux (
     end
 
     // Frame start/reset control
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             read_frame_start <= 1'b0;
             read_frame_reset <= 1'b0;
@@ -594,7 +607,7 @@ module read_data_mux (
     
 
     // HSYNC control logic
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (tx_eim_rst || !eim_rst) begin
             sig_hsync_1d <= 1'b0;
             sig_hsync_2d <= 1'b0;
@@ -633,7 +646,7 @@ module read_data_mux (
     assign down_hsync_keep_hi = sig_hsync && hsync_keep_hi && (hsync_keep_hi_cnt == 4'b0101);
 
    // HSYNC counter logic
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
 //            hsync_cnt <= 0;
             s_tuser_0_dly <= '0;
@@ -656,7 +669,7 @@ module read_data_mux (
     assign rst_hsync_cnt = (inc_hsync_cnt && hsync_cnt == (dsp_image_height[11:0] - 12'h1)) ? 1'b1 : 1'b0;
 
     // HSYNC counter
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             hsync_cnt <= 12'd0;
             rst_hsync_cnt_dly <= 1'b0;
@@ -677,7 +690,7 @@ module read_data_mux (
     assign up_vsync_keep_hi = rst_hsync_cnt_dly;
     assign down_vsync_keep_hi = sig_vsync && vsync_keep_hi && (vsync_keep_hi_cnt == 4'b1111);
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             vsync_keep_hi <= 1'b0;
         end
@@ -689,7 +702,7 @@ module read_data_mux (
         end
     end
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             vsync_keep_hi_cnt <= 4'b0000;
         end
@@ -701,7 +714,7 @@ module read_data_mux (
         end
     end
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             lo_vsync <= 1'b0;
         end
@@ -710,7 +723,7 @@ module read_data_mux (
         end
     end
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             sig_vsync <= 1'b0;
         end
@@ -724,7 +737,7 @@ module read_data_mux (
 
 //    assign read_vsync = sig_vsync;
 
-    always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!eim_rst || tx_eim_rst) begin
             lo_hsync <= 1'b0;
         end else begin
@@ -745,7 +758,7 @@ module read_data_mux (
     generate
 //        genvar i;
         for (i = 0; i < 6; i = i + 1) begin : hsync_gen
-            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
                 if (!eim_rst || tx_eim_rst) begin
                     hsync[i] <= 1'b0;
                 end else if (lo_hsync) begin
@@ -761,7 +774,7 @@ module read_data_mux (
 //    generate
 ////        genvar i;
 //        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_gen
-//            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //                if (!eim_rst || tx_eim_rst) begin
 //                    hsync_delay[i] <= 1'b0;
 //                end else if (lo_hsync_delay[i]) begin
@@ -776,7 +789,7 @@ module read_data_mux (
 //    generate
 ////        genvar i;
 //        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_cnt_gen
-//            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //                if (!eim_rst || tx_eim_rst) begin
 //                    hsync_delay_cnt[i] <= 8'h00;
 //                end else if (!hsync_delay[i]) begin
@@ -809,7 +822,7 @@ module read_data_mux (
 //    generate
 ////        genvar i;
 //        for (i = 0; i < 6; i = i + 1) begin : flag_gen 
-//            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //                if (!eim_rst || tx_eim_rst) begin
 //                    flag[i] <= 1'b0;
 //                end else if (lo_flag[i]) begin
@@ -839,7 +852,7 @@ module read_data_mux (
 //    generate
 ////        genvar i;
 //        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_start_dly_gen
-//            always_ff @(posedge eim_clk or negedge eim_rst or posedge tx_eim_rst) begin
+//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
 //                if (!eim_rst || tx_eim_rst) begin
 //                    hsync_delay_start_1d[i] <= '0;
 //                    hsync_delay_start_2d[i] <= '0;

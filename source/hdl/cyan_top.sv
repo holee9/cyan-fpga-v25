@@ -250,7 +250,7 @@ module cyan_top (
     logic s_reg_map_sel;
 
     // MIPI signals
-    logic s_reset;
+
     logic s_csi2_reset;
     logic s_clk_lock;
     logic s_csi_done;
@@ -357,6 +357,34 @@ module cyan_top (
     logic s_aed_detect_skip_oe_o;
 
 
+    ///////////////////////////////////////////////////////////////////////////////
+    // Week 2: Reset Synchronization (RST-001 Fix)
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // 20MHz domain reset synchronizer
+    reset_sync reset_sync_20mhz (
+        .clk    (s_clk_20mhz),
+        .nRST   (nRST),
+        .rst_n  (rst_n_20mhz)
+    );
+
+    // 100MHz domain reset synchronizer
+    reset_sync reset_sync_100mhz (
+        .clk    (s_clk_100mhz),
+        .nRST   (nRST),
+        .rst_n  (rst_n_100mhz)
+    );
+
+    // 200MHz domain reset synchronizer
+    reset_sync reset_sync_200mhz (
+        .clk    (s_dphy_clk_200M),
+        .nRST   (nRST),
+        .rst_n  (rst_n_200mhz)
+    );
+
+    // EIM clock domain reset (uses 100MHz)
+    assign rst_n_eim = rst_n_100mhz;
+
     // clk_ctrl module instantiation
     clk_ctrl clk_inst0 (
         .reset          (1'b0),
@@ -372,7 +400,7 @@ module cyan_top (
 
     // MIPI CSI2 TX module instantiation
     mipi_csi2_tx_top inst_mipi_csi2_tx (
-        .reset                  (s_csi2_reset),
+        .reset                  (~rst_n_200mhz),
         .dphy_clk_200M          (s_dphy_clk_200M),
         .clk_100M               (s_clk_100mhz),
         .eim_clk                (eim_clk),
@@ -404,7 +432,7 @@ module cyan_top (
     // init module instantiation
     init init_inst (
         .fsm_clk            (s_clk_20mhz),
-        .reset              (s_reset),
+        .reset              (~rst_n_20mhz),
         .en_pwr_off         (en_pwr_off),
         .en_pwr_dwn         (en_pwr_dwn),
         .init_rst           (init_rst),
@@ -427,7 +455,7 @@ module cyan_top (
     )
     host_if_inst (
         .clk               (s_clk_100mhz),
-        .reset             (s_reset),
+        .reset             (~rst_n_100mhz),
         .SCLK              (SCLK),
         .SSB               (SSB),
         .MOSI              (MOSI),
@@ -447,7 +475,7 @@ module cyan_top (
 
     reg_map_refacto reg_map_refact_inst (
         .eim_clk                    (s_clk_100mhz),
-        .eim_rst                    (eim_rst),
+        .eim_rst                    (rst_n_eim),
         .fsm_clk                    (s_clk_20mhz),
         .rst                        (rst),
         .exp_req                    (EXP_REQ),
@@ -580,7 +608,7 @@ module cyan_top (
     // Sequence table module instantiation
     sequencer_fsm seq_fsm_inst (
         .clk                (s_clk_20mhz),
-        .reset_i            (s_seq_reset),
+        .reset_i            (~rst_n_20mhz),
         .config_done_i      (s_sync_config_done),
         .lut_addr_i         (seq_lut_addr),
         .lut_wen_i          (seq_lut_wr_en),
@@ -621,7 +649,7 @@ module cyan_top (
     assign s_wait_roic_sync = (s_wait_sync_dly == 3'd3) ? 1'b1 : 1'b0;
 
 
-    assign s_seq_reset = (~rst) ? 1'b1 : 1'b0;
+    assign s_seq_reset = (~rst_n_20mhz) ? 1'b1 : 1'b0;
 
     assign valid_repeat_count_o = s_sync_current_repeat_count_o - 32'd2;
 
@@ -703,7 +731,7 @@ module cyan_top (
 // ====================================================================
     // Read RX data processing
     always_ff @(posedge eim_clk or negedge eim_rst) begin
-        if (!eim_rst) begin
+        if (!rst_n_eim) begin
             s_axis_tdata_a <= '0;
             s_axis_tdata_b <= '0;
         end else begin
@@ -741,40 +769,23 @@ module cyan_top (
     assign GF_XAO[1] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd1) ? gate_xao_4 : 1'b1;
     assign GF_XAO[0] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd0) ? gate_xao   : 1'b1;
 
-    // Reset generation
-    assign s_reset = !nRST;
-
-    always_ff @(posedge s_clk_20mhz) begin
-        if (system_rst == 1'b1 || init_rst == 1'b1 || s_reset == 1'b1) begin
-            rst <= 1'b0;
-        end else begin
-            rst <= 1'b1;
-        end
-    end
-
-    always_ff @(posedge s_clk_100mhz) begin
-        if (system_rst == 1'b1 || s_reset == 1'b1) begin
-            s_csi2_reset <= 1'b1;
-        end else begin
-            s_csi2_reset <= 1'b0;
-        end
-    end
-
-    always_ff @(posedge s_clk_20mhz) begin
-        if (FSM_rst_index == 1'b1 || ~rst) begin
-            fsm_drv_rst <= 1'b0;
-        end else begin
-            fsm_drv_rst <= 1'b1;
-        end
-    end
-
-    always_ff @(posedge s_clk_100mhz) begin
-        sys_rst <= rst;
-    end
-
-    always_ff @(posedge eim_clk) begin
-        eim_rst <= rst;
-    end
+    ///////////////////////////////////////////////////////////////////////////////
+    // Week 2: Standardized Reset Signals (All Active-LOW)
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // Internal control signals (reused)
+    logic system_rst;
+    logic init_rst;
+    logic org_reset_FSM;
+    
+    // Assign from internal control (now uses active-LOW)
+    assign system_rst = ~rst_n_20mhz;     // system_rst is active-HIGH internally
+    assign init_rst = ~rst_n_20mhz;        // init_rst is active-HIGH internally
+    assign org_reset_FSM = ~rst_n_20mhz;   // org_reset_FSM is active-HIGH internally
+    
+    // FSM driver reset (active-LOW)
+    logic fsm_drv_rst;
+    assign fsm_drv_rst = rst_n_20mhz & ~FSM_rst_index;
 
 
     assign ROIC_TP_SEL  = ti_roic_tp_sel;
@@ -1086,9 +1097,9 @@ module cyan_top (
 
     read_data_mux read_data_mux_inst (
         .sys_clk                (s_clk_100mhz),
-        .sys_rst                (sys_rst),
+        .sys_rst                (rst_n_100mhz),  // Week 2: Standardized active-LOW
         .eim_clk                (eim_clk),
-        .eim_rst                (eim_rst),
+        .eim_rst                (rst_n_eim),      // Week 2: Standardized active-LOW
         .csi_done               (s_csi_done),
         .dummy_get_image        (dummy_get_image),
         .exist_get_image        (),
@@ -1125,7 +1136,7 @@ module cyan_top (
 
     dcdc_clk dcdc_clk_inst (
         .clk        (s_clk_20mhz),
-        .reset_n    (sys_rst),
+        .reset_n    (rst_n_20mhz),
         .clk_1M_o   (s_clk_1mhz),
         .clk_5M_o   (s_clk_5mhz)
     );
