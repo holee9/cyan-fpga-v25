@@ -132,7 +132,8 @@ module sequencer_fsm (
     logic           fsm_rst;                     // FSM reset signal
     logic           s_lut_addr_rst;
 
-    state_type      current_state_reg;           // Current state register (enum)
+    state_type      current_state_reg;
+    state_type      next_state;                  // Next state (for 3-block FSM)           // Current state register (enum)
     // logic [7:0]     lut_addr_reg;                // LUT address register
     logic [7:0]     s_lut_wr_addr_reg;            // LUT write address register
     logic [7:0]     s_lut_rd_addr_reg;            // LUT read address register
@@ -296,81 +297,105 @@ module sequencer_fsm (
         end
     end
 
-    // Main FSM State Machine
+    // ------------------------------------------------------------------------
+    // 3-Block FSM Implementation (Xilinx Recommended Style)
+    // ------------------------------------------------------------------------
+
+    // Block 1: State Register (Sequential)
     always_ff @(posedge clk or posedge fsm_rst) begin
         if (fsm_rst) begin
             current_state_reg       <= RST;
-            current_repeat_count     <= 32'd0;
+        end else begin
+            current_state_reg       <= next_state;
+        end
+    end
+
+    // Block 2: Next State Logic (Combinational)
+    always_comb begin
+        // Default: stay in current state
+        next_state = current_state_reg;
+
+        unique case (current_state_reg)
+            RST: begin
+                if (s_config_done_dly[0]) begin
+                    next_state = RST;
+                end else if (data_length_timer == 0) begin
+                    next_state = IDLE;
+                end else begin
+                    next_state = RST;
+                end
+            end
+
+            WAIT, BACK_BIAS, FLUSH, AED_DETECT, EXPOSE_TIME, READOUT: begin
+                if (data_length_timer == 0) begin
+                    if (active_repeat_count > 0) begin
+                        next_state = current_state_reg;
+                    end else begin
+                        next_state = IDLE;
+                    end
+                end else begin
+                    next_state = current_state_reg;
+                end
+            end
+
+            IDLE: begin
+                if (read_next_state == READOUT && roic_even_odd_i == 1'b0) begin
+                    next_state = IDLE;
+                end else begin
+                    next_state = state_type'(read_next_state);
+                end
+            end
+
+            default: begin
+                next_state = IDLE;
+            end
+        endcase
+    end
+
+    // Block 3: Output Logic and Timer Control (Sequential)
+    always_ff @(posedge clk or posedge fsm_rst) begin
+        if (fsm_rst) begin
+            current_repeat_count    <= 32'd0;
             active_repeat_count     <= 32'd0;
             data_length_reg         <= 19'd0;
             data_length_timer       <= 19'd0;
-//            data_length_timer_end   <= 1'b0;
-            s_readout_wait         <= 1'b0;
+            s_readout_wait          <= 1'b0;
             stv_mask_o              <= 1'b0;
             csi_mask_o              <= 1'b0;
             panel_stable_o          <= 1'b0;
             iterate_exist_o         <= 1'b0;
         end else begin
-            // Decrement data length timer in command states
-            if ((current_state_reg != RST && current_state_reg != IDLE) && 
+            if ((current_state_reg != RST && current_state_reg != IDLE) &&
                 data_length_timer > 0) begin
-                data_length_timer   <= data_length_timer - 1;
+                data_length_timer <= data_length_timer - 1;
             end
 
-            // FSM State Transitions
             case (current_state_reg)
                 RST: begin
-                    // Stay in RST until config_done_i is asserted
-                    // if (s_config_done_i) begin
                     if (s_config_done_dly[0]) begin
-                        current_state_reg <= RST;
-                    end else if (data_length_timer == 0) begin
-                        current_state_reg <= IDLE;
-                    end else begin
+                        data_length_timer <= data_length_timer;
+                    end else if (data_length_timer > 0) begin
                         data_length_timer <= data_length_timer - 1;
                     end
                 end
 
-                // Command States: Handle repeat and timer
                 WAIT, BACK_BIAS, FLUSH, AED_DETECT, EXPOSE_TIME, READOUT: begin
                     if (data_length_timer == 0) begin
                         if (active_repeat_count > 0) begin
-                            // Repeat current command
                             active_repeat_count <= active_repeat_count - 1;
                             data_length_timer   <= data_length_reg;
-                        end else begin
-                            // Command complete, go to IDLE
-                            current_state_reg <= IDLE;
                         end
-                        
-//                        data_length_timer_end <= 1'b1;
-//                    end else begin
-//                        data_length_timer_end <= 1'b0;
                     end
                 end
 
                 IDLE: begin
-
                     if (read_next_state == READOUT && roic_even_odd_i == 1'b0) begin
-                        current_state_reg       <= current_state_reg;
-                        current_repeat_count    <= current_repeat_count;
-                        active_repeat_count     <= active_repeat_count;
-                        data_length_reg         <= data_length_reg;
-                        data_length_timer       <= data_length_timer;
-//                        data_length_timer_end   <= data_length_timer_end;
-                        stv_mask_o             <= stv_mask_o;
-                        csi_mask_o             <= csi_mask_o;
-                        panel_stable_o         <= panel_stable_o;
-                        iterate_exist_o        <= iterate_exist_o;
-                        s_readout_wait         <= 1'b1;
+                        s_readout_wait <= 1'b1;
                     end else begin
-                        // Stay in IDLE, update address for next command
-                        current_state_reg       <= state_type'(read_next_state);
                         current_repeat_count    <= read_repeat_count;
                         active_repeat_count     <= read_repeat_count;
                         data_length_reg         <= read_data_length;
                         data_length_timer       <= read_data_length;
-//                        data_length_timer_end   <= 1'b0;
                         stv_mask_o             <= read_stv_mask;
                         csi_mask_o             <= read_csi_mask;
                         panel_stable_o         <= read_panel_stable;
@@ -380,12 +405,12 @@ module sequencer_fsm (
                 end
 
                 default: begin
-                    // Invalid state, go to IDLE
-                    current_state_reg   <= IDLE;
                 end
             endcase
         end
     end
+
+
 
     always_ff @(posedge clk or posedge fsm_rst) begin
         if (fsm_rst) begin
