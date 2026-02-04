@@ -131,6 +131,9 @@
 [ ] 리셋 극성 확인? (_n suffix)
 [ ] undriven signal 검사 완료?
 [ ] 필수 파라미터 포함?
+[ ] 클럭 버퍼 명시적 인스턴스화? (직접 할당 금지)
+[ ] Vivado 경로 확인? (D:\AMDDesignTools\2025.2\Vivado)
+[ ] XDC 제약 조건 넷 이름 확인? (IBUFDS 출력 vs BUFG 출력)
 ```
 
 ---
@@ -161,4 +164,124 @@
 **에러:** 정상 코드에 syntax error 보고
 **원인:** 검사 스크립트가 너무 보수적임
 **해결책:** 직접 파일을 읽어서 확인, 허위 양성 무시
-**규칙:** 도구 에러 보고 시 직접 파일 검증으로 재황
+**규칙:** 도구 에러 보고 시 직접 파일 검증으로 재확인
+
+---
+
+## [ERR-014] Bare Comment Separator
+
+**발생:** 2026-02-04 (cyan_top.sv:1086, :715)
+**에러:** `=====` (SystemVerilog 주석 아님)
+**원인:** 주석 기호 `//` 누락
+**해결책:** `// =====`로 수정
+**규칙:** 모든 구분선 앞에 `//` 추가 필요
+
+---
+
+## [ERR-015] Python Escape Sequence in SV Code
+
+**발생:** 2026-02-04 (deser_single.sv)
+**에러:** `(\!rst_n)` - Python f-string escape가 SV 코드에 삽입됨
+**원인:** Python 문자열 조작 중 escape sequences 누입
+**해결책:** `(!rst_n)`으로 수정 (백슬래시 제거)
+**규칙:** Python으로 SV 코드 생성 시 escape sequences 확인
+
+---
+
+## 해결책 요약 (2026-02-04 갱신)
+
+| 에러 | 해결책 | 적용 규칙 |
+|------|--------|----------|
+| ERR-001 | TaskCreate/Update 사용 | TODO 관리는 Task tool로 |
+| ERR-002 | Hook 에러 무시 | 작업 중단 사유 아님 |
+| ERR-003 | Bash + Python 대체 | Edit 실패 시 대안 사용 |
+| ERR-004 | Glob로 경로 확인 | 경로 가정 금지 |
+| ERR-005 | 포트 방향 확인 | 연결 전 검증 |
+| ERR-006 | 리셋 극성 일치 | `_n` 접미사 확인 |
+| ERR-007 | undriven signal 검사 | 드라이버 확인 |
+| ERR-008 | 필수 파라미터 체크 | 체크리스트 사용 |
+| ERR-009 | 단순 패턴부터 | Grep 실패 시 대안 |
+| ERR-010 | 현실적 목표 설정 | 구조 고려 목표 |
+| ERR-011 | 신호 선언 확인 | assign 전 선언 검증 |
+| ERR-012 | 리셋 이름 일치 | 모든 참조 확인 |
+| ERR-013 | 직접 파일 검증 | 허위 양성 필터링 |
+| ERR-014 | 주석 기호 확인 | 구분선에 `//` 추가 |
+| ERR-015 | Escape sequences 확인 | Python 생성 후 검증 |
+| ERR-016 | # 주석 문자 사용 금지 | SystemVerilog는 #가 주석이 아님 |
+| ERR-017 | 클럭 버퍼 명시적 인스턴스화 | 직접 할당으로 버퍼 추론 금지 |
+
+---
+
+## [ERR-016] Hash Used as Comment Character
+
+**발생:** 2026-02-04 (ti_roic_top.sv:142, :187)
+**에러:** `# RST-007` - SystemVerilog에서 `#`는 주석 문자가 아님
+**원인:** Python/다른 언어 습관으로 `#`을 주석으로 사용
+**해결책:** `//`로 수정
+**규칙:** SystemVerilog에서 `#`는 delay 연산자이므로 주석에 사용 금지, 항상 `//` 사용
+
+---
+
+## 검증 방법 개선 (2026-02-04)
+
+1. **Vivado 구문 검증** - 실제 툴체인에서 에러 확인 최우선
+2. **특수 문자 검사** - `#`, `===`, `---` 등 SV에서 특수 의미 있는 문자 확인
+3. **주석 스타일** - `//` 외의 주석 문자 사용 금지
+4. **Python artifact 확인** - escape sequence, f-string 잔재 확인
+
+---
+
+## [ERR-017] Bitstream Clock Routing Error (Place 30-574)
+
+**발생:** 2026-02-04 (Bitstream Generation)
+**에러:** `IOB driving a BUFG must use a CCIO in the same half side (top/bottom) of chip as the BUFG`
+- IOB_X0Y116, IOB_X0Y136 등 왼쪽 반칩 IO가 오른쪽 BUFG로 라우팅 실패
+**원인:** `assign fclk_out = fclk_in_int` 직접 할당이 자동으로 BUFG 추론
+- 추론된 BUFG가 잘못된 위치에 배치됨
+- XDC 제약 조건의 넷 이름이 `fclk_out`이었지만 실제 넷은 `fclk_in_int`
+**해결책:**
+1. 명시적 BUGG 인스턴스화:
+   ```systemverilog
+   BUFG fclk_bufg_inst (
+       .I (fclk_in_int),
+       .O (fclk_out)
+   );
+   ```
+2. XDC 제약 조건 업데이트:
+   ```tcl
+   set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {roic_channel_array_inst/gen_ti_roic_channel[*].ti_roic_top_inst/bit_clock_gen/fclk_in_int}]
+   ```
+**규칙:** 클럭 버퍼는 항상 명시적으로 인스턴스화, 직접 할당(`assign`)으로 버퍼 추론 의존 금지
+
+---
+
+## 프로젝트 환경 설정 (2026-02-04)
+
+### Vivado 설치 경로
+```
+D:\AMDDesignTools\2025.2\Vivado
+```
+- 실행 파일: `D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat`
+- 버전: v2025.2 (64-bit)
+
+### 프로젝트 경로
+```
+D:\workspace\gittea-work\v2025\CYAN-FPGA\xdaq_top
+```
+- 프로젝트 파일: `./build/xdaq_top.xpr`
+- 소스 코드: `./source/hdl/`
+- 제약 조건: `./source/constrs/`
+- 출력 파일: `./output/`
+- 보고서: `./reports/`
+
+### 계층 구조 참조
+```
+roic_channel_array_inst/gen_ti_roic_channel[*].ti_roic_top_inst/
+```
+- XDC 제약 조건 작성 시 위 경로 사용
+
+### 빌드 스크립트
+```tcl
+# Vivado batch mode 실행
+"D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat" -mode batch -source "build_bitstream.tcl" -log "build_bitstream.log" -nojournal
+```
