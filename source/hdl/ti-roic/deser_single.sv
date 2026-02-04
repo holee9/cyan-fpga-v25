@@ -77,6 +77,10 @@ module deser_single_lane #(
     logic [WORD_SIZE-1:0] temp_word_d1;  // First capture register (clk_div domain)
     // (* mark_debug="true" *) 
     logic [WORD_SIZE-1:0] temp_word_d2;  // Second capture register (fclk_p domain)
+    
+    // Clock enable and inverted clock signals (ERR-011 fix)
+    logic clock_enable;        // ISERDESE2 clock enable
+    logic clk_in_int_inv;      // Inverted bit clock for DDR input
 
     //========================================================================
     // Signal assignments 
@@ -106,7 +110,6 @@ module deser_single_lane #(
         .SERDES_MODE        ("MASTER"),       // Primary deserializer
         .OFB_USED           ("FALSE"),        // No feedback
         .IOBDELAY           ("IFD")           // Use input delay
-        // .IOBDELAY           ("NONE")           // Use input delay
     ) iserdese2_master (
         // Data outputs (8-bit)
         .Q1                 (iserdes_q[0]),    // LSB output first
@@ -130,13 +133,13 @@ module deser_single_lane #(
         .CLKDIVP            (1'b0),           // No phase shifted clock
         
         // Data inputs
-       .D                  (1'b0),           // Not used (using DDLY)
-       .DDLY               (data_in_from_pins_delay), // Delayed input
+        .D                  (1'b0),           // Not used (using DDLY)
+        .DDLY               (data_in_from_pins_delay), // Delayed input
         // .D                  (data_in_from_pins_delay),           // Not used (using DDLY)
         // .DDLY               (1'b0), // Delayed input
         
         // Reset and control
-        .RST                (rst),            // Asynchronous reset
+        .RST                (rst_n),           // ERR-012 fix: Use rst_n
         
         // Unused ports
         // .O                  (data_in_from_pins_out),
