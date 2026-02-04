@@ -69,8 +69,8 @@ module reg_map_integration (
     output logic        en_test_roic_col,
     output logic        en_test_roic_row,
     output logic        exp_ack,
-    output logic [11:0] dn_aed_gate_xao [0:5],
-    output logic [11:0] up_aed_gate_xao [0:5],
+    output logic [15:0] dn_aed_gate_xao [0:5],
+    output logic [15:0] up_aed_gate_xao [0:5],
     output logic [7:0]  state_led_ctr,
 
     // Sequence table LUT interface
@@ -156,7 +156,7 @@ module reg_map_integration (
     )
     host_if_inst (
         .clk               (clk_100mhz),
-        .reset             (~rst_n_eim),
+        .reset_n           (rst_n_eim),
         .SCLK              (SCLK),
         .SSB               (SSB),
         .MOSI              (MOSI),

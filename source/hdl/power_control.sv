@@ -34,7 +34,7 @@ module power_control (
     input  logic        back_bias,            // Back bias signal from gate driver
 
     // FSM Reset Control
-    output logic        fsm_rst_index         // FSM reset index output
+    output logic        fsm_rst_index,        // FSM reset index output
 
     // ROIC Bias Power Outputs
     output logic        ROIC_VBIAS,           // ROIC bias voltage output

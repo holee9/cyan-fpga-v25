@@ -50,6 +50,7 @@ module spi_slave
 	logic s_ssb;
 
 	logic [addrsz-1:0] s_reg_addr;
+	logic        txdv;         // Data valid output signal
 
 	logic s_addr_valid;
 	logic [5:0] dly_addr_valid;

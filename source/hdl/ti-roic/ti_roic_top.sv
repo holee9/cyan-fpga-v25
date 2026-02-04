@@ -88,12 +88,18 @@ module ti_roic_top #(
     logic fclk_out;
     logic bit_clk;
     logic clk_div_out;
+    logic clk_reset;   // Active-HIGH reset derived from clk_reset_n
+    logic data_reset;  // Active-HIGH reset derived from data_reset_n
 
     logic [DATA_WIDTH-1:0] deser_data;   // Data after deserialization, before alignment
     logic [DATA_WIDTH-1:0] aligned_data; // Aligned data output
     logic [DATA_WIDTH-1:0] detected_data; // Data output from first_channel_detector
     logic s_channel_detected;              // Channel detection flag from first_channel_detector
     logic detect_data_valid;            // Data valid flag from first_channel_detector
+
+    // Convert active-LOW input to active-HIGH for modules that need it
+    assign clk_reset = ~clk_reset_n;
+    assign data_reset = ~data_reset_n;
 
 
     //--------------------------------------------------------------------------
@@ -106,7 +112,7 @@ module ti_roic_top #(
         .DIV2_RATIO     (3)             // Second divider (÷3)
     ) bit_clock_gen (
         // Control inputs
-        .clk_reset_n    (clk_reset_n),
+        .clk_reset      (clk_reset),
         // .ld_dly_tap     (ld_dly_tap),
         
         // Differential clock input
@@ -139,7 +145,7 @@ module ti_roic_top #(
         .clk_in_int_buf         (bit_clk),
 
         .clk_div                (clk_div_out),
-        .rst_n                  (data_reset_n),  # RST-007: active-LOW
+        .rst_n                  (data_reset_n),   // RST-007: active-LOW
         .fclk_out               (fclk_out),
         
         // // Delay control interface
@@ -184,7 +190,7 @@ module ti_roic_top #(
     first_channel_detector channel_detector (
         // Inputs
         .clk                    (fclk_out),        // Use the divided clock
-        .rst_n                  (data_reset_n),  # RST-007: active-LOW      // Reset signal
+        .rst                    (data_reset),     // Active-HIGH reset
         .aligned_data_in        (aligned_data),       // Input from bit_align
         .detect_data_valid      (detect_data_valid), // Valid signal from bit_align
         .first_sample_pulse     (s_channel_detected),

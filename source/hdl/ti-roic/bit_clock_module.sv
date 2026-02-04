@@ -54,6 +54,8 @@ module bit_clock_module #(
     logic clk_div;               // Divided clock internal (unbuffered)
     logic clk_in_int;            // LVDS buffer output before delay
     
+    logic fclk_in_bufd;          // Clock after BUFG
+
     IBUFDS #(
         .DIFF_TERM      ("FALSE"),
         .IBUF_LOW_PWR   ("FALSE"),
@@ -61,11 +63,15 @@ module bit_clock_module #(
     ) adc_fclk_inst (
         .I          (fclk_in_p),   // Positive differential input
         .IB         (fclk_in_n),   // Negative differential input
-        .O          (fclk_in_int)  // Single-ended output
-        // .O          (fclk_out)  // Single-ended output
+        .O          (fclk_in_int)  // Single-ended output to BUFG
     );
 
-    assign fclk_out = fclk_in_int;  // Direct assignment for optimization
+    // Explicit BUFG instantiation for proper clock routing
+    // This ensures the clock buffer is correctly placed and routed
+    BUFG fclk_bufg_inst (
+        .I          (fclk_in_int), // Input from IBUFDS
+        .O          (fclk_out)     // Global clock output
+    );
 
     IBUFDS #(
         .DIFF_TERM      ("FALSE"),

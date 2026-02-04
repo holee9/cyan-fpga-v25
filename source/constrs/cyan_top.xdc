@@ -1,7 +1,10 @@
 # timing constraints
-set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {gen_ti_roic_top[*].ti_roic_top_inst/bit_clock_gen/fclk_out}]
+# Clock routing constraints for TI ROIC ADC fast clocks
+# BUFG explicit instantiation requires dedicated route override for certain channels
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {roic_channel_array_inst/gen_ti_roic_channel[*].ti_roic_top_inst/bit_clock_gen/fclk_in_int}]
 
-#set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {gen_ti_roic_top[*].ti_roic_top_inst/bit_clock_gen/adc_fclk_inst_0}]
+# Alternative constraint for IBUFDS output net
+#set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {roic_channel_array_inst/gen_ti_roic_channel[*].ti_roic_top_inst/bit_clock_gen/adc_fclk_inst/O}]
 
 #set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets s_clk_5mhz]
 

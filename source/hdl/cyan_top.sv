@@ -255,7 +255,7 @@ module cyan_top (
     // MIPI signals
 
     logic s_csi2_reset;
-    logic s_clk_lock;
+    // s_clk_lock declared at line 107
     logic s_csi_done;
     logic [0:0] s_axis_video_tuser;
     logic [23:0] s_axis_tdata_a;
@@ -524,19 +524,19 @@ module cyan_top (
         .ti_roic_deser_shift_set   (ti_roic_deser_shift_set),
         .ti_roic_deser_align_shift (ti_roic_deser_align_shift),
         .ti_roic_deser_align_done  (ti_roic_deser_align_done),
-        .unused_gate_mode1         (unused_gate_mode1),
-        .unused_gate_mode2         (unused_gate_mode2),
-        .unused_gate_cs1           (unused_gate_cs1),
-        .unused_gate_cs2           (unused_gate_cs2),
-        .unused_gate_sel           (unused_gate_sel),
-        .unused_gate_ud            (unused_gate_ud),
-        .unused_gate_stv_mode      (unused_gate_stv_mode),
-        .unused_gate_oepsn         (unused_gate_oepsn),
-        .unused_stv_sel_h          (unused_stv_sel_h),
-        .unused_stv_sel_l1         (unused_stv_sel_l1),
-        .unused_stv_sel_r1         (unused_stv_sel_r1),
-        .unused_stv_sel_l2         (unused_stv_sel_l2),
-        .unused_stv_sel_r2         (unused_stv_sel_r2)
+        .gate_mode1               (unused_gate_mode1),
+        .gate_mode2               (unused_gate_mode2),
+        .gate_cs1                 (unused_gate_cs1),
+        .gate_cs2                 (unused_gate_cs2),
+        .gate_sel                 (unused_gate_sel),
+        .gate_ud                  (unused_gate_ud),
+        .gate_stv_mode            (unused_gate_stv_mode),
+        .gate_oepsn               (unused_gate_oepsn),
+        .stv_sel_h                (unused_stv_sel_h),
+        .stv_sel_l1               (unused_stv_sel_l1),
+        .stv_sel_r1               (unused_stv_sel_r1),
+        .stv_sel_l2               (unused_stv_sel_l2),
+        .stv_sel_r2               (unused_stv_sel_r2)
     );
 
     // assign disable_aed_read_xao = 1'b1; // For Gemini, AED read XAO is always enabled
@@ -595,6 +595,7 @@ module cyan_top (
         
         // FSM outputs
         .state_exit_flag_o       (s_state_exit_flag),
+        .aed_detect_skip_oe_o    (),  // Unused for now
         .current_state_o         (current_state_o),
         .busy_o                  (busy_o),
         .sequence_done_o         (sequence_done_o),
@@ -712,9 +713,9 @@ module cyan_top (
         end
     end
 
-==================================================
+// ============================================================
     // Read RX data processing
-    always_ff @(posedge eim_clk or negedge eim_rst) begin
+    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
         if (!rst_n_eim) begin
             s_axis_tdata_a <= '0;
             s_axis_tdata_b <= '0;
@@ -807,11 +808,11 @@ module cyan_top (
     );
 
     // Week 2: Standardized Reset Signals (All Active-LOW)
-    
+
     // Internal control signals (reused)
-    
+
     // FSM driver reset (active-LOW)
-    logic fsm_drv_rst;
+    // fsm_drv_rst declared at line 124
     assign fsm_drv_rst = rst_n_20mhz & ~FSM_rst_index;
 
     assign ROIC_TP_SEL  = ti_roic_tp_sel;
@@ -1099,7 +1100,7 @@ module cyan_top (
     control_signal_mux control_signal_mux_inst (
         // Clock and Reset
         .clk_20mhz               (s_clk_20mhz),
-        .deser_reset             (deser_reset),
+        .rst_n_20mhz             (rst_n_20mhz),      // Active-LOW reset
         
         // TI ROIC Integration Outputs (pass-through/registered)
         .ti_roic_sync_out        (s_roic_sync_out),
