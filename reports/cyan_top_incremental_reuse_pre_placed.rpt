@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2025.2 (win64) Build 6299465 Fri Nov 14 19:35:11 GMT 2025
-| Date         : Wed Feb  4 16:00:02 2026
+| Date         : Wed Feb  4 16:57:40 2026
 | Host         : work-dev running 64-bit major release  (build 9200)
 | Command      : report_incremental_reuse -file cyan_top_incremental_reuse_pre_placed.rpt
 | Design       : cyan_top
@@ -83,10 +83,10 @@ Table of Contents
 +-----------------+-------------+-------------+-------------+-------------+-------------+-------------+
 | synth_design    |             |             |       00:01 |       00:01 |       00:01 |       00:01 |
 | opt_design      |             |             |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
-| read_checkpoint |             |             |             |     < 1 min |             |     < 1 min |
-| place_design    |       0.516 |             |     < 1 min |             |       00:01 |             |
-| phys_opt_design |       0.516 |             |     < 1 min |             |     < 1 min |             |
-| route_design    |       0.543 |             |     < 1 min |             |       00:01 |             |
+| read_checkpoint |             |             |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
+| place_design    |       0.543 |             |     < 1 min |             |     < 1 min |             |
+| phys_opt_design |       0.543 |             |     < 1 min |             |     < 1 min |             |
+| route_design    |       0.543 |             |     < 1 min |             |     < 1 min |             |
 +-----------------+-------------+-------------+-------------+-------------+-------------+-------------+
 
 
@@ -116,6 +116,7 @@ Table of Contents
 --------------
 synth_design-define default::[not_specified] -verilog_define default::[not_specified] -vhdl_define default::[not_specified] -top  cyan_top -part  xc7a35tfgg484-1 
 opt_design
+read_checkpoint -directive RuntimeOptimized  -incremental -auto_incremental D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp
 place_design
 phys_opt_design
 route_design
