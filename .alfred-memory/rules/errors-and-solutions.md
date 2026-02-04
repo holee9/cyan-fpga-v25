@@ -285,3 +285,72 @@ roic_channel_array_inst/gen_ti_roic_channel[*].ti_roic_top_inst/
 # Vivado batch mode 실행
 "D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat" -mode batch -source "build_bitstream.tcl" -log "build_bitstream.log" -nojournal
 ```
+
+### 빌드 스크립트 (build_bitstream.tcl)
+```tcl
+open_project D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_top.xpr
+reset_run synth_1
+launch_runs synth_1 -jobs 4
+wait_on_run synth_1
+reset_run impl_1
+launch_runs impl_1 -jobs 4
+wait_on_run impl_1
+launch_runs impl_1 -to_step write_bitstream
+wait_on_run impl_1
+```
+
+### 출력 파일 확인
+```
+./output/cyan_top.bit   # Bitstream (FPGA 다운로드용)
+./output/cyan_top.bin   # Binary
+./output/cyan_top.mcs   # SPI Flash용
+./reports/*.rpt         # 타이밍/루팅/DRC 보고서
+```
+
+### 파일 관리 정책
+| 폴더/파일 | 관리 여부 | 설명 |
+|-----------|----------|------|
+| `source/hdl/*.sv` | ✅ | SystemVerilog 소스 |
+| `source/constrs/*.xdc` | ✅ | 제약 조건 |
+| `output/*.bit, *.bin, *.mcs` | ✅ | 빌드 산출물 |
+| `reports/*.rpt` | ✅ | 보고서 |
+| `build/xdaq_top.xpr` | ✅ | 프로젝트 파일 |
+| `build/post_script.tcl` | ✅ | 포스트 스크립트 |
+| `build/*.runs/` | ❌ | 중간 산출물 (.gitignore) |
+| `source/ip/*/*.dcp, *.xml, ...` | ❌ | IP 생성 파일 |
+
+---
+
+## 작업 전 체크리스트 (2026-02-04)
+
+```
+[ ] Vivado 경로 확인? D:\AMDDesignTools\2025.2\Vivado
+[ ] 프로젝트 경로 확인? D:\workspace\gittea-work\v2025\CYAN-FPGA\xdaq_top
+[ ] 빌드 스크립트 존재? build_bitstream.tcl
+[ ] 출력 폴더 존재? output/, reports/
+[ ] 클럭 버퍼 명시적 인스턴스? (assign 금지)
+[ ] XDC 제약 조건 넷 이름 확인?
+[ ] 리셋 극성 확인? (_n suffix, active-LOW)
+[ ] 포트 방향 확인? (input/output)
+[ ] IP 생성 파일 .gitignore 확인?
+```
+
+## 빌드 실행 절차 (CLI)
+```bash
+# 1. 프로젝트 경로로 이동
+cd "D:\workspace\gittea-work\v2025\CYAN-FPGA\xdaq_top"
+
+# 2. Vivado batch mode 실행
+"D:\AMDDesignTools\2025.2\Vivado\bin\vivado.bat" -mode batch -source "build_bitstream.tcl" -log "build_bitstream.log" -nojournal
+
+# 3. 출력 파일 확인
+ls output/*.bit output/*.bin output/*.mcs
+```
+
+## Simulation 절차 (GUI)
+```
+1. Vivado GUI 실행
+2. 프로젝트 열기: build/xdaq_top.xpr
+3. Run Simulation → Run Behavioral Simulation
+4. 결과 확인 후 Waveform 분석
+```
