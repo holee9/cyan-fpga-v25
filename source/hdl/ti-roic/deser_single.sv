@@ -163,7 +163,7 @@ module deser_single_lane #(
     // This implements a shift register to assemble the complete WORD_SIZE word
 
     // always_ff @(posedge clk_div or negedge rst_n) begin
-    //     if (\!rst_n) begin
+    //     if (!rst_n) begin
     //         temp_word <= '0;  // Clear word on reset
     //     end else begin
     //         // MSB-to-LSB shift register - newest byte in LSB position
@@ -175,7 +175,7 @@ module deser_single_lane #(
     // end
     
     always_ff @(posedge clk_div or negedge rst_n) begin
-        if (\!rst_n) begin
+        if (!rst_n) begin
             iserdes_q_d1 <= '0;
             iserdes_q_d2 <= '0;
         end else begin
@@ -187,7 +187,7 @@ module deser_single_lane #(
     assign temp_word = {iserdes_q_d2, iserdes_q_d1, iserdes_q}; // Assemble 24-bit word
 
     always_ff @(posedge clk_in_int_buf or negedge rst_n) begin
-        if (\!rst_n) begin
+        if (!rst_n) begin
             fclk_in <= '0;  // Clear word on reset
         end else begin
             fclk_in <= {fclk_in[0], fclk_out};  // Capture assembled word
@@ -197,7 +197,7 @@ module deser_single_lane #(
     assign fclk_hi_edge = (fclk_in == 2'b01) ? 1'b1 : 1'b0; // Detect rising edge
 
     always_ff @(posedge clk_in_int_buf or negedge rst_n) begin
-        if (\!rst_n) begin
+        if (!rst_n) begin
             temp_word_d1 <= '0;
         end else if (fclk_hi_edge) begin// Capture on frame clock edge
             temp_word_d1 <= temp_word;
@@ -205,7 +205,7 @@ module deser_single_lane #(
     end
 
     always_ff @(posedge fclk_out or negedge rst_n) begin
-        if (\!rst_n) begin
+        if (!rst_n) begin
             temp_word_d2 <= '0;
         end else begin
             temp_word_d2 <= temp_word_d1;  // Stable transfer across domains
