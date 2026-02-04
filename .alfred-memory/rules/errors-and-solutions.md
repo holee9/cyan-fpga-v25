@@ -132,3 +132,33 @@
 [ ] undriven signal 검사 완료?
 [ ] 필수 파라미터 포함?
 ```
+
+---
+
+## [ERR-011] Undeclared Signal Usage
+
+**발생:** 2026-02-04 (deser_single.sv)
+**에러:** `clock_enable`, `clk_in_int_inv` 사용되었으나 선언되지 않음
+**원인:** 신호 선언 누락 (리팩토링 중 실수)
+**해결책:** `logic clock_enable;` 와 `logic clk_in_int_inv;` 선언 추가
+**규칙:** assign 문 사용 전 해당 신호가 선언되었는지 확인
+
+---
+
+## [ERR-012] Wrong Reset Signal Name
+
+**발생:** 2026-02-04 (deser_single.sv)
+**에러:** ISERDESE2 `.RST(rst)`에서 `rst` 사용하지만 변수는 `rst_n`임
+**원인:** RST-007 수정 시 포트 이름 변경 누락
+**해결책:** `.RST(rst_n)`으로 수정
+**규칙:** 리셋 관련 수정 시 모든 참조 확인 (인스턴스 포함)
+
+---
+
+## [ERR-013] False Positive Syntax Detection
+
+**발생:** 2026-02-04 (Python syntax checker)
+**에러:** 정상 코드에 syntax error 보고
+**원인:** 검사 스크립트가 너무 보수적임
+**해결책:** 직접 파일을 읽어서 확인, 허위 양성 무시
+**규칙:** 도구 에러 보고 시 직접 파일 검증으로 재황
