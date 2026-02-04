@@ -71,7 +71,7 @@ module read_data_mux (
     };
     
     // Internal signals
-    logic        tx_eim_rst;      
+    logic        tx_eim_rst_n;      
     // Reset signal for tx path
 //    logic        valid_read_roic_data;
     logic [15:0] s_h_count;   // Horizontal counter
@@ -92,28 +92,16 @@ module read_data_mux (
     logic        s_axis_tlast_2d;
     logic        s_axis_tlast_3d;
     
-//    // Burst counter signals
-//    logic        valid_read_roic_data_sys_1d = 1'b0;
-//    logic        valid_read_roic_data_sys_2d = 1'b0;
-//    logic        inc_roic_burst_cnt_sys;
-//    logic        rst_roic_burst_cnt_sys;
-//    logic [7:0]  roic_burst_cnt_sys = 8'h01;
     
     // Memory interface signals
     // logic [31:0] read_mem_data [11:0];   // Memory read data (1-based indexing)
-//    logic [8:0]  read_mem_addr [11:0];   // Memory read address (1-based indexing)
     logic       s_valid_read_mem;
     logic       s_dummy_read_index;
-    // logic       s_dummy_end;
     logic [11:0] s_axis_read_mem;
     
 
     // Memory read addressing
     logic        read_mem_index; // Memory read index signal
-//    logic [9:0]  read_mem_addr_offset;
-//    logic [7:0]  read_mem_addr_offset_1d;
-//    logic [7:0]  read_mem_addr_offset_2d;
-//    logic [9:0]  s_max_read_mem_addr_offset;
 
     // Test pattern signals using arrays for better organization
     logic [15:0] test_pattern_col_1 [11:0] = '{
@@ -130,28 +118,7 @@ module read_data_mux (
     logic [15:0] pattern_offset = 16'h0001;
     logic [15:0] line_offset = 16'h0000;
 
-//    // Flag signals
-//    logic [5:0] flag;         // Combines flags 1-6
-//    logic [5:0] hi_flag;      // Combines hi_flags 1-6
-//    logic [5:0] lo_flag;      // Combines lo_flags 1-6
-    
-//    logic [5:0] lo_flag_tmp1; // Combines lo_flag_X_tmp1 signals
-//    logic [5:0] lo_flag_tmp2; // Combines lo_flag_X_tmp2 signals
-
 //    // HSYNC delay signals
-//    logic [5:0] hsync_delay_start;    // Bit vector for hsync_delay_start_X
-//    logic [5:0] hsync_delay_start_1d; // Delayed hsync_delay_start
-//    logic [5:0] hsync_delay_start_2d; // 2-cycle delayed hsync_delay_start
-    
-//    logic [5:0] hsync_delay;          // Bit vector for hsync_delay_X
-//    logic [7:0] hsync_delay_cnt [0:5];// Array for hsync_delay_cnt_X
-    
-//    logic [5:0] hi_hsync_delay_tmp1;  // Combines hi_hsync_delay_X_tmp1
-//    logic [5:0] hi_hsync_delay_tmp2;  // Combines hi_hsync_delay_X_tmp2
-    
-//    // HSYNC control signals
-//    logic [5:0] hi_hsync_delay;       // Combines hi_hsync_delay_X signals
-//    logic [5:0] lo_hsync_delay;       // Combines lo_hsync_delay_X signals
     
     logic [5:0] hsync;             
     logic [5:0] hi_hsync;             
@@ -168,7 +135,6 @@ module read_data_mux (
     logic inc_hsync_cnt;
     logic [11:0] hsync_cnt;
 
-//    logic get_image_eim_1d;
     
     logic s_read_data_start;
 
@@ -188,8 +154,6 @@ module read_data_mux (
 
     logic FSM_read_index_sys_1d;
     logic FSM_read_index_sys_2d;
-//    logic get_image_sys_1d;
-    logic tx_sys_rst;
     
 
     // Signal to indicate if we are in image acquisition
@@ -213,6 +177,25 @@ module read_data_mux (
     logic s_v_sync;
     logic s_h_sync;
 
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // CDC-003 Fix: Async FIFO for eim_clk -> sys_clk data path (24-bit)
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // Internal eim_clk domain signals (before FIFO)
+    logic [23:0] s_read_data_a_eim;
+    logic [23:0] s_read_data_b_eim;
+    logic        s_read_data_valid_eim;
+    logic        s_fifo_wr_en;
+    logic        s_fifo_full;
+    logic        s_fifo_rd_en;
+    logic        s_fifo_empty;
+    
+    // sys_clk domain signals (after FIFO)
+    logic [23:0] s_read_data_a_sys;
+    logic [23:0] s_read_data_b_sys;
+    logic        s_read_data_valid_sys;
+
     assign s_max_h_count = max_h_count;
     assign s_max_v_count = max_v_count;
 
@@ -222,8 +205,11 @@ module read_data_mux (
     ///////////////////////////////////////////////////////////////////////////////
     
     // Generate internal reset conditions from control signals
-    logic internal_reset;
-    assign internal_reset = rst_hsync_cnt_dly || hi_vsync || tx_sys_rst;
+    // RST-003: Internal reset signals (active-LOW for consistency)
+    logic        tx_eim_rst_n;
+    logic        tx_sys_rst_n;
+    logic        internal_reset;
+    assign internal_reset = rst_hsync_cnt_dly || hi_vsync || !tx_sys_rst_n;
     
     // h_count/v_count counter (RST-002: Fixed single async reset)
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
@@ -282,8 +268,6 @@ module read_data_mux (
    
     // Control signals
     assign s_dummy_start = s_dummy_get_image_1d && !s_dummy_get_image_2d;
-    // assign s_dummy_end = !s_dummy_get_image_1d && s_dummy_get_image_2d;    // Get image control
-//    assign get_image = (get_dark || get_bright) && !s_dummy_valid;
     
     // Assign the exist_get_image output
     assign exist_get_image = s_dummy_valid;
@@ -295,22 +279,11 @@ module read_data_mux (
     
 
     // Internal reset generation (maintains original logic)
-    assign tx_eim_rst = (FSM_read_index_eim_1d && !FSM_read_index_eim_2d && !FSM_aed_read_index) ? 1'b1 : 1'b0;
-    assign tx_sys_rst = (FSM_read_index_sys_1d && !FSM_read_index_sys_2d && !FSM_aed_read_index) ? 1'b1 : 1'b0;
+    assign tx_eim_rst_n = !(FSM_read_index_eim_1d && !FSM_read_index_eim_2d && !FSM_aed_read_index);
+    assign tx_sys_rst_n = !(FSM_read_index_sys_1d && !FSM_read_index_sys_2d && !FSM_aed_read_index);
 
     assign s_read_data_start = read_data_start;
 
-//    // System clock domain logic
-//    always_ff @(posedge sys_clk or negedge sys_rst or posedge tx_sys_rst) begin
-//        if (!sys_rst || tx_sys_rst) begin
-//            valid_read_roic_data_sys_1d <= 1'b0;
-//            valid_read_roic_data_sys_2d <= 1'b0;
-//        end else begin
-//            // Pipeline valid ROIC data signals
-//            valid_read_roic_data_sys_1d <= valid_read_roic_data;
-//            valid_read_roic_data_sys_2d <= valid_read_roic_data_sys_1d;
-//        end
-//    end
     
     always_ff @(posedge sys_clk or negedge sys_rst) begin
         if (!sys_rst) begin
@@ -332,16 +305,6 @@ module read_data_mux (
 //    assign rst_roic_burst_cnt_sys = (inc_roic_burst_cnt_sys && (roic_burst_cnt_sys == VALID_NUM_ROIC_BURST)) ? 1'b1 : 1'b0;
     
 //    // Burst counter
-//    always_ff @(posedge sys_clk or negedge sys_rst or posedge tx_sys_rst) begin
-//        if (!sys_rst || tx_sys_rst) begin
-//            roic_burst_cnt_sys <= 8'h01;
-//        end else begin
-//            if (rst_roic_burst_cnt_sys)
-//                roic_burst_cnt_sys <= 8'h01;
-//            else if (inc_roic_burst_cnt_sys)
-//                roic_burst_cnt_sys <= roic_burst_cnt_sys + 1'b1;
-//        end
-//    end    
     
     // EIM clock domain reset control
     always_ff @(posedge eim_clk or negedge eim_rst) begin
@@ -368,7 +331,7 @@ module read_data_mux (
 
 //    // Memory read address control
 //    always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//        if (!eim_rst || tx_eim_rst) begin
+//        if (!eim_rst || tx_eim_rst_n) begin
 //            read_mem_addr_offset <= '0;
 //            read_mem_addr_offset_1d <= '0;
 //            read_mem_addr_offset_2d <= '0;
@@ -405,7 +368,7 @@ module read_data_mux (
     assign s_h_sync = (s_h_count > '0 && s_h_count <= s_max_h_count) ? 1'b1 : 1'b0;
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             s_axis_tlast <= 1'b0;
         end else begin
             if (s_read_axis_tready) begin
@@ -455,7 +418,7 @@ module read_data_mux (
 
     // Memory read control for all channels
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             read_mem <= '0;
             read_mem_1d <= '0;
             read_mem_2d <= '0;
@@ -497,106 +460,86 @@ module read_data_mux (
     // Start read operations control
     assign start_read_mem[0]  = hi_hsync_all;
     
-    // genvar i;
-    generate
-        for (i = 1; i < 12; i++) begin : gen_start_read
-            assign start_read_mem[i] = end_read_mem[i-1] && s_read_axis_tready;
-        end
-    endgenerate
-
 //    // Memory read address control for all channels
 //    // genvar i;
 //    generate
-//        for (i = 0; i < 12; i++) begin : gen_mem_addr_ctrl
-//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//                if (!eim_rst || tx_eim_rst)
-//                    read_mem_addr[i] <= '0;
-//                else if (read_mem[i] & s_valid_read_mem) begin
-//                    if (read_mem_addr[i] == MEM_HEIGHT)
-//                        read_mem_addr[i] <= '0;
-//                    else
-//                        read_mem_addr[i] <= read_mem_addr[i] + 1'b1;
-//                end
-//            end
-//        end
-//    endgenerate
 
     
-    // Memory read data output multiplexing
+    // Memory read data output multiplexing (CDC-003: eim_clk domain internal signals)
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
-            read_data_out_a <= '0;
-            read_data_out_b <= '0;
-            read_data_valid <= 1'b0;
+        if (!eim_rst || tx_eim_rst_n) begin
+            s_read_data_a_eim <= '0;
+            s_read_data_b_eim <= '0;
+            s_read_data_valid_eim <= 1'b0;
         end else begin
             // Use delayed valid signal to match VHDL behavior
-            read_data_valid <= s_axis_tvalid_3d;
+            s_read_data_valid_eim <= s_axis_tvalid_3d;
             
             if (|read_mem_2d) begin
                 case (1'b1)
                     read_mem_2d[0]: begin
-                                        read_data_out_a <= (roic_read_data_a[0]);
-                                        read_data_out_b <= (roic_read_data_b[0]);
+                                        s_read_data_a_eim <= (roic_read_data_a[0]);
+                                        s_read_data_b_eim <= (roic_read_data_b[0]);
                                     end
                     read_mem_2d[1]: begin
-                                        read_data_out_a <= (roic_read_data_a[1]);
-                                        read_data_out_b <= (roic_read_data_b[1]);
+                                        s_read_data_a_eim <= (roic_read_data_a[1]);
+                                        s_read_data_b_eim <= (roic_read_data_b[1]);
                                     end
                     read_mem_2d[2]: begin
-                                        read_data_out_a <= (roic_read_data_a[2]);
-                                        read_data_out_b <= (roic_read_data_b[2]);
+                                        s_read_data_a_eim <= (roic_read_data_a[2]);
+                                        s_read_data_b_eim <= (roic_read_data_b[2]);
                                     end
                     read_mem_2d[3]: begin
-                                        read_data_out_a <= (roic_read_data_a[3]);
-                                        read_data_out_b <= (roic_read_data_b[3]);
+                                        s_read_data_a_eim <= (roic_read_data_a[3]);
+                                        s_read_data_b_eim <= (roic_read_data_b[3]);
                                     end
                     read_mem_2d[4]: begin
-                                        read_data_out_a <= (roic_read_data_a[4]);
-                                        read_data_out_b <= (roic_read_data_b[4]);
+                                        s_read_data_a_eim <= (roic_read_data_a[4]);
+                                        s_read_data_b_eim <= (roic_read_data_b[4]);
                                     end
                     read_mem_2d[5]: begin
-                                        read_data_out_a <= (roic_read_data_a[5]);
-                                        read_data_out_b <= (roic_read_data_b[5]);
+                                        s_read_data_a_eim <= (roic_read_data_a[5]);
+                                        s_read_data_b_eim <= (roic_read_data_b[5]);
                                     end
                     read_mem_2d[6]: begin
-                                        read_data_out_a <= (roic_read_data_a[6]);
-                                        read_data_out_b <= (roic_read_data_b[6]);
+                                        s_read_data_a_eim <= (roic_read_data_a[6]);
+                                        s_read_data_b_eim <= (roic_read_data_b[6]);
                                     end
                     read_mem_2d[7]: begin
-                                        read_data_out_a <= (roic_read_data_a[7]);
-                                        read_data_out_b <= (roic_read_data_b[7]);
+                                        s_read_data_a_eim <= (roic_read_data_a[7]);
+                                        s_read_data_b_eim <= (roic_read_data_b[7]);
                                     end
                     read_mem_2d[8]: begin
-                                        read_data_out_a <= (roic_read_data_a[8]);
-                                        read_data_out_b <= (roic_read_data_b[8]);
+                                        s_read_data_a_eim <= (roic_read_data_a[8]);
+                                        s_read_data_b_eim <= (roic_read_data_b[8]);
                                     end
                     read_mem_2d[9]: begin
-                                        read_data_out_a <= (roic_read_data_a[9]);
-                                        read_data_out_b <= (roic_read_data_b[9]);
+                                        s_read_data_a_eim <= (roic_read_data_a[9]);
+                                        s_read_data_b_eim <= (roic_read_data_b[9]);
                                     end
                     read_mem_2d[10]: begin
-                                        read_data_out_a <= (roic_read_data_a[10]);
-                                        read_data_out_b <= (roic_read_data_b[10]);
+                                        s_read_data_a_eim <= (roic_read_data_a[10]);
+                                        s_read_data_b_eim <= (roic_read_data_b[10]);
                                     end
                     read_mem_2d[11]: begin
-                                        read_data_out_a <= (roic_read_data_a[11]);
-                                        read_data_out_b <= (roic_read_data_b[11]);
+                                        s_read_data_a_eim <= (roic_read_data_a[11]);
+                                        s_read_data_b_eim <= (roic_read_data_b[11]);
                                     end
                     default:        begin
-                                        read_data_out_a <= '0;
-                                        read_data_out_b <= '0;
+                                        s_read_data_a_eim <= '0;
+                                        s_read_data_b_eim <= '0;
                                     end
                 endcase
             end else begin
-                read_data_out_a <= '0;
-                read_data_out_b <= '0;
+                s_read_data_a_eim <= '0;
+                s_read_data_b_eim <= '0;
             end
         end
     end
 
     // Frame start/reset control
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             read_frame_start <= 1'b0;
             read_frame_reset <= 1'b0;
         end else begin
@@ -608,7 +551,7 @@ module read_data_mux (
 
     // HSYNC control logic
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (tx_eim_rst || !eim_rst) begin
+        if (tx_eim_rst_n || !eim_rst) begin
             sig_hsync_1d <= 1'b0;
             sig_hsync_2d <= 1'b0;
             
@@ -647,7 +590,7 @@ module read_data_mux (
 
    // HSYNC counter logic
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
 //            hsync_cnt <= 0;
             s_tuser_0_dly <= '0;
 //            s_tuser_0_cnt <= '0;
@@ -670,7 +613,7 @@ module read_data_mux (
 
     // HSYNC counter
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             hsync_cnt <= 12'd0;
             rst_hsync_cnt_dly <= 1'b0;
         end else begin
@@ -691,7 +634,7 @@ module read_data_mux (
     assign down_vsync_keep_hi = sig_vsync && vsync_keep_hi && (vsync_keep_hi_cnt == 4'b1111);
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             vsync_keep_hi <= 1'b0;
         end
         else begin
@@ -703,7 +646,7 @@ module read_data_mux (
     end
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             vsync_keep_hi_cnt <= 4'b0000;
         end
         else begin
@@ -715,7 +658,7 @@ module read_data_mux (
     end
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             lo_vsync <= 1'b0;
         end
         else begin
@@ -724,7 +667,7 @@ module read_data_mux (
     end
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             sig_vsync <= 1'b0;
         end
         else begin
@@ -738,14 +681,14 @@ module read_data_mux (
 //    assign read_vsync = sig_vsync;
 
     always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-        if (!eim_rst || tx_eim_rst) begin
+        if (!eim_rst || tx_eim_rst_n) begin
             lo_hsync <= 1'b0;
         end else begin
             lo_hsync <= down_hsync_keep_hi;
         end
     end
 
-    // Generate vector singnals
+    // Generate vector signals
 
     // genvar i;
     generate
@@ -759,7 +702,7 @@ module read_data_mux (
 //        genvar i;
         for (i = 0; i < 6; i = i + 1) begin : hsync_gen
             always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-                if (!eim_rst || tx_eim_rst) begin
+                if (!eim_rst || tx_eim_rst_n) begin
                     hsync[i] <= 1'b0;
                 end else if (lo_hsync) begin
                     hsync[i] <= 1'b0;
@@ -771,144 +714,59 @@ module read_data_mux (
     endgenerate
 
 
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_gen
-//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//                if (!eim_rst || tx_eim_rst) begin
-//                    hsync_delay[i] <= 1'b0;
-//                end else if (lo_hsync_delay[i]) begin
-//                    hsync_delay[i] <= 1'b0;
-//                end else if (hi_hsync_delay[i]) begin
-//                    hsync_delay[i] <= 1'b1;
-//                end
-//            end
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_cnt_gen
-//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//                if (!eim_rst || tx_eim_rst) begin
-//                    hsync_delay_cnt[i] <= 8'h00;
-//                end else if (!hsync_delay[i]) begin
-//                    hsync_delay_cnt[i] <= 8'h00;
-//                end else if (hsync_delay[i]) begin
-//                    hsync_delay_cnt[i] <= hsync_delay_cnt[i] + 1'b1;
-//                end
-//            end
-//        end
-//    endgenerate
-
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hi_hsync_delay_gen
-//            assign hi_hsync_delay_tmp1[i] = (hsync_delay_start_1d[i] && !hsync_delay_start_2d[i]);
-//            assign hi_hsync_delay_tmp2[i] = (lo_hsync && hsync[(i + 5) % 6] && flag[i]);
-//            assign hi_hsync_delay[i] = (hi_hsync_delay_tmp1[i] && !hi_hsync_delay_tmp2[i]);
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : lo_hsync_delay_gen
-//            assign lo_hsync_delay[i] = (hsync_delay_cnt[i]== '1 && hsync_delay[i] == 1'b1) ? 1'b1 : 1'b0;
-//        end
-//    endgenerate
-
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : flag_gen 
-//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//                if (!eim_rst || tx_eim_rst) begin
-//                    flag[i] <= 1'b0;
-//                end else if (lo_flag[i]) begin
-//                    flag[i] <= 1'b0;
-//                end else if (hi_flag[i]) begin
-//                    flag[i] <= 1'b1;
-//                end
-//            end
-//        end
-//    endgenerate
-
-
-//    generate 
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_start_gen
-//            always_ff @(posedge sys_clk or negedge sys_rst or posedge tx_sys_rst) begin
-//                if (!sys_rst || tx_sys_rst) begin
-//                    hsync_delay_start[i] <= 1'b0;
-//                end else if (valid_read_roic_data) begin
-//                    hsync_delay_start[i] <= 1'b1;
-//                end else 
-//                    hsync_delay_start[i] <= 1'b0;
-//            end
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hsync_delay_start_dly_gen
-//            always_ff @(posedge eim_clk or negedge rst_n_eim) begin
-//                if (!eim_rst || tx_eim_rst) begin
-//                    hsync_delay_start_1d[i] <= '0;
-//                    hsync_delay_start_2d[i] <= '0;
-//                end else begin
-//                    hsync_delay_start_1d[i] <= hsync_delay_start[i];
-//                    hsync_delay_start_2d[i] <= hsync_delay_start_1d[i];
-//                end
-//            end
-//        end
-//    endgenerate
-
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : hi_flag_gen
-//            assign hi_flag[i] = hsync_delay_start_1d[i] && !hsync_delay_start_2d[i] && !flag[i];
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : lo_flag_tmp1_gen
-//            assign lo_flag_tmp1[i] = lo_hsync && hsync[i] && !flag[(i + 1) % 6];
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i++) begin : lo_flag_tmp2_gen
-//            always_comb begin
-//                lo_flag_tmp2[i] = lo_hsync_delay[(i + 1) % 6] && flag[i] && flag[(i + 1) % 6];
-//            end
-//        end
-//    endgenerate
-
-//    generate
-////        genvar i;
-//        for (i = 0; i < 6; i = i + 1) begin : lo_flag_gen
-//            assign lo_flag[i] = lo_flag_tmp1 || lo_flag_tmp2[i];
-//        end
-//    endgenerate
-
-
-
-	// process(eim_clk, eim_rst)
-	// begin
-	// 	if eim_rst='0' then
-	// 		read_rx_data_a  <= (others=>'0');
-	// 		read_rx_data_b  <= (others=>'0');
-	// 	elsif eim_clk'event and eim_clk='1' then
-	// 		read_rx_data_b <= image_data_out(7 downto 3)&"000"&image_data_out(12 downto 8)&"000"
-	// 						&image_data_out(2 downto 0)&image_data_out(15 downto 13)&"00";
-	// 		read_rx_data_a <= image_data_out(23 downto 19)&"000"&image_data_out(28 downto 24)&"000"
-	// 						&image_data_out(18 downto 16)&image_data_out(31 downto 29)&"00";
-	// 	end if;
-	// end process;
-
+    ///////////////////////////////////////////////////////////////////////////////
+    // CDC-003 Fix: Async FIFO instantiation for eim_clk -> sys_clk CDC
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // FIFO write enable (data valid in eim_clk domain)
+    assign s_fifo_wr_en = s_read_data_valid_eim;
+    
+    // FIFO read enable (ready in sys_clk domain)
+    assign s_fifo_rd_en = read_axis_tready;
+    
+    // Async FIFO for data_a channel (24-bit) - DUP-001: using universal async_fifo
+    async_fifo #(
+        .DATA_WIDTH(24),
+        .DEPTH(16)
+    ) fifo_data_a_inst (
+        // Write clock domain (eim_clk)
+        .wr_clk    (eim_clk),
+        .wr_rst_n  (rst_n_eim),       // RST-006: active-LOW reset
+        .wr_en     (s_fifo_wr_en),
+        .din       (s_read_data_a_eim),
+        .full      (s_fifo_full),
+        
+        // Read clock domain (sys_clk = 100MHz)
+        .rd_clk    (sys_clk),
+        .rd_rst_n  (sys_rst),         // RST-006: active-LOW reset
+        .rd_en     (s_fifo_rd_en),
+        .dout      (s_read_data_a_sys),
+        .empty     (s_fifo_empty)
+    );
+    
+    // Async FIFO for data_b channel (24-bit) - DUP-001: using universal async_fifo
+    async_fifo #(
+        .DATA_WIDTH(24),
+        .DEPTH(16)
+    ) fifo_data_b_inst (
+        // Write clock domain (eim_clk)
+        .wr_clk    (eim_clk),
+        .wr_rst_n  (rst_n_eim),       // RST-006: active-LOW reset
+        .wr_en     (s_fifo_wr_en),
+        .din       (s_read_data_b_eim),
+        .full      (),                 // Unused (share with fifo_a)
+        
+        // Read clock domain (sys_clk = 100MHz)
+        .rd_clk    (sys_clk),
+        .rd_rst_n  (sys_rst),         // RST-006: active-LOW reset
+        .rd_en     (s_fifo_rd_en),
+        .dout      (s_read_data_b_sys),
+        .empty     ()                  // Unused (share with fifo_a)
+    );
+    
+    // CDC-003: Output assignments from sys_clk domain (FIFO outputs)
+    assign read_data_out_a   = s_read_data_a_sys;
+    assign read_data_out_b   = s_read_data_b_sys;
+    assign read_data_valid   = s_fifo_rd_en && !s_fifo_empty;
 
 endmodule

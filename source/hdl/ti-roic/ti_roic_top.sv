@@ -23,6 +23,7 @@
 // 0.00     | 2025-05-08 | drake.lee     | Initial creation
 // 0.01     | 2025-05-13 | drake.lee     | Added first channel detection
 // 0.02     | 2025-05-13 | drake.lee     | Added data reordering functionality
+// 0.03     | 2026-02-04 | drake.lee     | RST-007: Changed resets to active-LOW
 // ==============================================================================
 
 module ti_roic_top #(
@@ -33,8 +34,8 @@ module ti_roic_top #(
     parameter bit [23:0] PATTERN_2 = 24'hFF0000   // Second alignment pattern
 ) (
     // Control and reset inputs
-    input  logic clk_reset,        // Master reset for all clock domains
-    input  logic data_reset,       // Data domain reset
+    input  logic clk_reset_n,      // Master reset for all clock domains (active-LOW, RST-007)
+    input  logic data_reset_n,     // Data domain reset (active-LOW, RST-007)
     
     // LVDS differential inputs
     input  logic fclk_in_p,         // Clock input positive (LVDS)
@@ -105,7 +106,7 @@ module ti_roic_top #(
         .DIV2_RATIO     (3)             // Second divider (÷3)
     ) bit_clock_gen (
         // Control inputs
-        .clk_reset      (clk_reset),
+        .clk_reset_n    (clk_reset_n),
         // .ld_dly_tap     (ld_dly_tap),
         
         // Differential clock input
@@ -138,7 +139,7 @@ module ti_roic_top #(
         .clk_in_int_buf         (bit_clk),
 
         .clk_div                (clk_div_out),
-        .rst                    (data_reset),
+        .rst_n                  (data_reset_n),  # RST-007: active-LOW
         .fclk_out               (fclk_out),
         
         // // Delay control interface
@@ -183,7 +184,7 @@ module ti_roic_top #(
     first_channel_detector channel_detector (
         // Inputs
         .clk                    (fclk_out),        // Use the divided clock
-        .rst                    (data_reset),      // Reset signal
+        .rst_n                  (data_reset_n),  # RST-007: active-LOW      // Reset signal
         .aligned_data_in        (aligned_data),       // Input from bit_align
         .detect_data_valid      (detect_data_valid), // Valid signal from bit_align
         .first_sample_pulse     (s_channel_detected),

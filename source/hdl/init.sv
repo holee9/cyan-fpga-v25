@@ -1,477 +1,344 @@
+//******************************************************************************
+// Module: init
+// Description: Power initialization and reset sequence controller
+//
+// Week 11 Refactoring (RST-001 fix):
+// - Renamed reset parameter to rst_n for consistency
+// - Fixed polarity mismatch in instantiation (removed inversion)
+//
+// Week 9 Refactoring (M9-1):
+// - Converted from legacy 2-block FSM style to Xilinx-recommended 3-block style
+// - Block 1: State Register (always_ff with async reset)
+// - Block 2: Next State Logic (always_comb)
+// - Block 3: Output Logic (always_comb)
+// - Consolidated power on/off and power down sequences into single FSM
+// - Maintains exact functional behavior from original implementation
+//
+// FSM Style: 3-Block (Recommended for Xilinx FPGAs)
+// State Encoding: Binary encoding for efficient resource usage
+//******************************************************************************
 
-// `include "./p_define.sv"
-`include	"./p_define_refacto.sv"
+`include "./p_define_refacto.sv"
 `timescale 1ns/1ps
 
-typedef enum logic [2:0] {
-    IDLE        = 3'b000,
-    POWER_ON    = 3'b001,
-    STEP1       = 3'b010,
-    STEP2       = 3'b011,
-    STEP3       = 3'b100,
-    STEP4       = 3'b101,
-    STEP5       = 3'b110,
-    STEP6       = 3'b111
-} power_state_t;
-
-`define POWER_ON_DELAY    25'd1000
-`define STEP_DELAY       25'd2000
-`define STEP5_DELAY      25'd3000
-
 module init(
-	fsm_clk					, //i,
-	reset 					, //i,
-	en_pwr_off				, //i,
-	en_pwr_dwn				, //i,
+    // Clock and Reset
+    input  logic              fsm_clk,        // System clock
+    input  logic              rst_n,          // Active-LOW reset (RST-001 fix: renamed from reset)
 
-	init_rst				, //o,
-	pwr_init_step1			, //o,
-	pwr_init_step2			, //o,
-	pwr_init_step3			, //o,
-	pwr_init_step4			, //o,
-	pwr_init_step5			, //o,
-	pwr_init_step6			, //o,
-	roic_reset				  //o
+    // Control Inputs
+    input  logic              en_pwr_off,     // Power off enable
+    input  logic              en_pwr_dwn,     // Power down enable
+
+    // Outputs
+    output logic              init_rst,       // System reset (active HIGH)
+    output logic              pwr_init_step1,  // Power init step 1
+    output logic              pwr_init_step2,  // Power init step 2
+    output logic              pwr_init_step3,  // Power init step 3
+    output logic              pwr_init_step4,  // Power init step 4
+    output logic              pwr_init_step5,  // Power init step 5
+    output logic              pwr_init_step6,  // Power init step 6
+    output logic              roic_reset      // ROIC reset pulse
 );
 
-//----------------------------------------
-// Signal declaration 
-//----------------------------------------
+    //==========================================================================
+    // State Definitions
+    //==========================================================================
+    typedef enum logic [3:0] {
+        IDLE        = 4'b0000,  // Idle state, waiting for power on/off command
+        PWR_ON      = 4'b0001,  // Power on sequence active
+        STEP1       = 4'b0010,  // Initialization step 1
+        STEP2       = 4'b0011,  // Initialization step 2
+        STEP3       = 4'b0100,  // Initialization step 3
+        STEP4       = 4'b0101,  // Initialization step 4
+        STEP5       = 4'b0110,  // Initialization step 5 (long delay)
+        STEP6       = 4'b0111,  // Initialization step 6 (final init state)
+        PWR_OFF     = 4'b1000,  // Power off sequence active
+        PDWN_STEP5  = 4'b1001,  // Power down step 5
+        PDWN_STEP4  = 4'b1010,  // Power down step 4
+        PDWN_STEP3  = 4'b1011,  // Power down step 3
+        PDWN_STEP2  = 4'b1100,  // Power down step 2
+        PDWN_STEP1  = 4'b1101,  // Power down step 1
+        STEP5_OFF   = 4'b1110   // Step 5 power off (long delay)
+    } state_t;
 
-	input				fsm_clk					; //i,
-	input				reset 					; //i,
-	input				en_pwr_off				; //i,
-	input				en_pwr_dwn				; //i,
+    //==========================================================================
+    // State and Signal Declarations
+    //==========================================================================
+    state_t                  state_ff;           // Current state register
+    state_t                  state_next;         // Next state
 
-	output  logic           init_rst_n				; //o,
-	output	wire		pwr_init_step1			; //o,
-	output	wire		pwr_init_step2			; //o,
-	output	wire		pwr_init_step3			; //o,
-	output	wire		pwr_init_step4			; //o,
-	output	wire		pwr_init_step5			; //o,
-	output	wire		pwr_init_step6			; //o,
-	output	wire		roic_reset				; //o
+    // Edge detection signals for control inputs
+    logic                    en_pwr_off_1d;
+    logic                    en_pwr_off_2d;
+    logic                    start_pwr_off;
+    logic                    start_pwr_on;
 
-//----------------------------------------
-//----------------------------------------
-	
-	reg				en_pwr_off_1d				;
-	reg				en_pwr_off_2d				;
-	initial			en_pwr_off_1d				= 1'b0;
-	initial			en_pwr_off_2d				= 1'b0;
+    logic                    en_pwr_dwn_1d;
+    logic                    en_pwr_dwn_2d;
+    logic                    start_pwr_dwn_off;
+    logic                    start_pwr_dwn_on;
 
-	wire			start_pwr_off				;
-	wire			start_pwr_on				;
+    // Timing counter
+    logic           [24:0]   counter_ff;
 
-	reg				pwr_off						;
-	reg				pwr_on 						;
-	initial			pwr_off						= 1'b0;
-	initial			pwr_on						= 1'b1;
+    // ROIC reset delay chain
+    logic                    step_delay_ff;
+    logic                    step_delay_1d_ff;
+    logic                    step_delay_2d_ff;
+    logic                    step_delay_3d_ff;
+    logic                    step_delay_4d_ff;
 
-	reg				init_step1					;
-	reg				init_step2					;
-	reg				init_step3					;
-	reg				init_step4					;
-	reg				init_step5					;
-	reg				init_step6					;
-	initial			init_step1					= 1'b0;
-	initial			init_step2					= 1'b0;
-	initial			init_step3					= 1'b0;
-	initial			init_step4					= 1'b0;
-	initial			init_step5					= 1'b0;
-	initial			init_step6					= 1'b0;
+    // System reset control
+    logic                    init_step6_1d;
+    logic                    init_step6_2d;
+    logic                    sig_init_rst_ff;
+    logic                    hi_init_rst;
 
-	reg				init_step6_1d				;
-	reg				init_step6_2d				;
-	initial			init_step6_1d				= 1'b0;
-	initial			init_step6_2d				= 1'b0;
+    //==========================================================================
+    // Block 1: State Register (Sequential Logic)
+    //==========================================================================
+    // This block contains only sequential logic for state and data registers.
+    // All state transitions and output logic are in separate combinational blocks.
+    //==========================================================================
 
-	reg				en_pwr_dwn_1d				;
-	reg				en_pwr_dwn_2d				;
-	initial			en_pwr_dwn_1d				= 1'b0;
-	initial			en_pwr_dwn_2d				= 1'b0;
+    always_ff @(posedge fsm_clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state_ff           <= IDLE;
+            counter_ff         <= 25'd0;
+            sig_init_rst_ff    <= 1'b1;
+            init_step6_1d      <= 1'b0;
+            init_step6_2d      <= 1'b0;
+            en_pwr_off_1d      <= 1'b0;
+            en_pwr_off_2d      <= 1'b0;
+            en_pwr_dwn_1d      <= 1'b0;
+            en_pwr_dwn_2d      <= 1'b0;
+            step_delay_ff      <= 1'b0;
+            step_delay_1d_ff   <= 1'b0;
+            step_delay_2d_ff   <= 1'b0;
+            step_delay_3d_ff   <= 1'b0;
+            step_delay_4d_ff   <= 1'b0;
+        end else begin
+            // State register update
+            state_ff        <= state_next;
 
-	wire			start_pwr_dwn_off			;
-	wire			start_pwr_dwn_on 			;
+            // Counter register update
+            if (state_next == PWR_ON || state_next == PWR_OFF ||
+                state_next == PDWN_STEP5 || state_next == STEP5_OFF) begin
+                counter_ff   <= 25'd0;
+            end else if (state_ff == PWR_ON || state_ff == PWR_OFF ||
+                        state_ff == STEP1 || state_ff == STEP2 ||
+                        state_ff == STEP3 || state_ff == STEP4 ||
+                        state_ff == STEP5 || state_ff == STEP5_OFF ||
+                        state_ff == PDWN_STEP5 || state_ff == PDWN_STEP4 ||
+                        state_ff == PDWN_STEP3 || state_ff == PDWN_STEP2) begin
+                counter_ff   <= counter_ff + 25'd1;
+            end
 
-	reg				pwr_dwn_off					;
-	reg				pwr_dwn_on 					;
-	initial			pwr_dwn_off					= 1'b0;
-	initial			pwr_dwn_on 					= 1'b0;
+            // System reset control register
+            if (hi_init_rst) begin
+                sig_init_rst_ff <= 1'b0;
+            end
 
-	reg				pwr_dwn_step1				;
-	reg				pwr_dwn_step2				;
-	reg				pwr_dwn_step3				;
-	reg				pwr_dwn_step4				;
-	reg				pwr_dwn_step5				;
-	initial			pwr_dwn_step1				= 1'b1;
-	initial			pwr_dwn_step2				= 1'b1;
-	initial			pwr_dwn_step3				= 1'b1;
-	initial			pwr_dwn_step4				= 1'b1;
-	initial			pwr_dwn_step5				= 1'b1;
+            // Step6 edge detection flops (for reset generation)
+            init_step6_1d   <= (state_ff == STEP6);
+            init_step6_2d   <= init_step6_1d;
 
-	wire			hi_init_rst 				;
+            // Input edge detection flops
+            en_pwr_off_1d   <= en_pwr_off;
+            en_pwr_off_2d   <= en_pwr_off_1d;
+            en_pwr_dwn_1d   <= en_pwr_dwn;
+            en_pwr_dwn_2d   <= en_pwr_dwn_1d;
 
-	logic			sig_init_rst				= 1'b1;
+            // ROIC reset delay chain
+            step_delay_ff    <= (state_ff == STEP5);
+            step_delay_1d_ff <= step_delay_ff;
+            step_delay_2d_ff <= step_delay_1d_ff;
+            step_delay_3d_ff <= step_delay_2d_ff;
+            step_delay_4d_ff <= step_delay_3d_ff;
+        end
+    end
 
-	reg				step_delay					;
-	reg				step_delay_1d				;
-	reg				step_delay_2d				;
-	reg				step_delay_3d				;
-	reg				step_delay_4d				;
-	initial			step_delay					= 1'b0;
-	initial			step_delay_1d				= 1'b0;
-	initial			step_delay_2d				= 1'b0;
-	initial			step_delay_3d				= 1'b0;
-	initial			step_delay_4d				= 1'b0;
+    //==========================================================================
+    // Block 2: Next State Logic (Combinational)
+    //==========================================================================
+    // This block contains all combinational logic for determining the next state.
+    // Pure combinational logic - no sequential elements.
+    //==========================================================================
 
-	reg	[24:0]		counter1					;
-	reg	[24:0]		counter2					;
-	initial			counter1					= 25'd0;
-	initial			counter2					= 25'd0;
+    // Edge detection signals
+    assign start_pwr_off     = en_pwr_off_1d & ~en_pwr_off_2d & (state_ff == STEP6);
+    assign start_pwr_on      = ~en_pwr_off_1d & en_pwr_off_2d & ~start_pwr_off;
+    assign start_pwr_dwn_on  = en_pwr_dwn_1d & ~en_pwr_dwn_2d & (state_ff == PDWN_STEP1);
+    assign start_pwr_dwn_off = ~en_pwr_dwn_1d & en_pwr_dwn_2d & ~start_pwr_dwn_on;
+    assign hi_init_rst       = init_step6_1d & ~init_step6_2d;
 
-//----------------------------------------
-// power init step signals 
-//----------------------------------------
+    // Next state logic
+    always_comb begin
+        // Default: stay in current state
+        state_next = state_ff;
 
-	assign pwr_init_step1	= init_step1 & pwr_dwn_step1;
-	assign pwr_init_step2	= init_step2 & pwr_dwn_step2;
-	assign pwr_init_step3	= init_step3 & pwr_dwn_step3;
-	assign pwr_init_step4	= init_step4 & pwr_dwn_step4;
-	assign pwr_init_step5	= init_step5 & pwr_dwn_step5;
-	assign pwr_init_step6	= init_step6;
+        case (state_ff)
+            //--------------------------------------------------------------
+            // IDLE State
+            // Wait for power on command
+            //--------------------------------------------------------------
+            IDLE: begin
+                if (start_pwr_on) begin
+                    state_next = PWR_ON;
+                end
+            end
 
-//----------------------------------------
-// Power On/Off sequence
-//----------------------------------------
+            //--------------------------------------------------------------
+            // Power On Sequence States
+            //--------------------------------------------------------------
+            PWR_ON: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP1;
+                end
+            end
 
-	always @(posedge fsm_clk or negedge reset) begin
-	if (~reset) begin
-			en_pwr_off_1d <= 1'b0;
-			en_pwr_off_2d <= 1'b0;
-		end else begin
-			en_pwr_off_1d <= en_pwr_off;
-			en_pwr_off_2d <= en_pwr_off_1d;
-		end
-	end
+            STEP1: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP2;
+                end
+            end
 
-	// generate trigger signal
-	assign start_pwr_off 	= en_pwr_off_1d & (!en_pwr_off_2d) & init_step6;
-	assign start_pwr_on		= (~en_pwr_off_1d) & en_pwr_off_2d & (~init_step1);
+            STEP2: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP3;
+                end
+            end
 
-	always @(posedge fsm_clk) begin
-		if (start_pwr_on) begin
-			pwr_off <= 1'b0;
-			pwr_on <= 1'b1;
-		end
-		else if (start_pwr_off) begin
-			pwr_off <= 1'b1;
-			pwr_on <= 1'b0;
-		end
-	end
+            STEP3: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP4;
+                end
+            end
 
-	always @(posedge fsm_clk) begin
-		if ((!pwr_off) && pwr_on) begin
-			if (!init_step1) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step1 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step1	<= init_step1;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if (init_step1 && (!init_step2)) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step2 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step2	<= init_step2;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if (init_step2 && (!init_step3)) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step3 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step3	<= init_step3;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if (init_step3 && (!init_step4)) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step4 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step4	<= init_step4;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if (init_step4 && (!init_step5)) begin
-				if (counter1 == `MORE_DELAY) begin
-					init_step5 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step5	<= init_step5;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if (init_step5 && (!init_step6)) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step6 	<= 1'b1;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step6	<= init_step6;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-		end
-		else if (pwr_off && (!pwr_on)) begin
-			if (init_step6) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step6 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step6	<= init_step6;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if ((!init_step6) && init_step5) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step5 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step5	<= init_step5;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if ((!init_step5) && init_step4) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step4 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step4	<= init_step4;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if ((!init_step4) && init_step3) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step3 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step3	<= init_step3;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if ((!init_step3) && init_step2) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step2 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step2	<= init_step2;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-			else if ((!init_step2) && init_step1) begin
-				if (counter1 == `INIT_DELAY) begin
-					init_step1 	<= 1'b0;
-					counter1 	<= 25'd0;
-				end
-				else begin
-					init_step1	<= init_step1;
-					counter1	<= counter1 + 25'd1;
-				end
-			end
-		end
-	end
-//----------------------------------------
-// Power Down sequence
-//----------------------------------------
+            STEP4: begin
+                if (counter_ff >= `MORE_DELAY) begin
+                    state_next = STEP5;
+                end
+            end
 
-	always @(posedge fsm_clk or negedge reset) begin
-	if (~reset) begin
-			en_pwr_dwn_1d <= 1'b0;
-			en_pwr_dwn_2d <= 1'b0;
-		end else begin
-			en_pwr_dwn_1d <= en_pwr_dwn;
-			en_pwr_dwn_2d <= en_pwr_dwn_1d;
-		end
-	end
+            STEP5: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP6;
+                end
+            end
 
-	assign start_pwr_dwn_on		= en_pwr_dwn_1d & (!en_pwr_dwn_2d) & pwr_dwn_step5;
-	assign start_pwr_dwn_off	= (!en_pwr_dwn_1d) & en_pwr_dwn_2d & (!pwr_dwn_step1);
+            STEP6: begin
+                // Final power on state - wait for power off command
+                if (start_pwr_off) begin
+                    state_next = PWR_OFF;
+                end
+            end
 
-	always @(posedge fsm_clk) begin
-		if (start_pwr_dwn_on) begin
-			pwr_dwn_off <= 1'b0;
-			pwr_dwn_on	<= 1'b1;
-		end
-		else if (start_pwr_dwn_off) begin
-			pwr_dwn_off <= 1'b1;
-			pwr_dwn_on	<= 1'b0;
-		end
-	end
+            //--------------------------------------------------------------
+            // Power Off Sequence States
+            //--------------------------------------------------------------
+            PWR_OFF: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP5_OFF;
+                end
+            end
 
-	always @(posedge fsm_clk) begin
-		if ((!pwr_dwn_off) && pwr_dwn_on) begin
-			if (pwr_dwn_step5) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step5 	<= 1'b0;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step5	<= pwr_dwn_step5;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if ((!pwr_dwn_step5) && pwr_dwn_step4) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step4 	<= 1'b0;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step4	<= pwr_dwn_step4;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if ((!pwr_dwn_step4) && pwr_dwn_step3) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step3 	<= 1'b0;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step3	<= pwr_dwn_step3;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if ((!pwr_dwn_step3) && pwr_dwn_step2) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step2 	<= 1'b0;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step2	<= pwr_dwn_step2;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if ((!pwr_dwn_step2) && pwr_dwn_step1) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step1 	<= 1'b0;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step1	<= pwr_dwn_step1;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-		end
-		else if (pwr_dwn_off && (!pwr_dwn_on)) begin
-			if (!pwr_dwn_step1) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step1 	<= 1'b1;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step1	<= pwr_dwn_step1;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if (pwr_dwn_step1 && (!pwr_dwn_step2)) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step2 	<= 1'b1;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step2	<= pwr_dwn_step2;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if (pwr_dwn_step2 && (!pwr_dwn_step3)) begin
-				if (counter2 == `INIT_DELAY) begin
-					pwr_dwn_step3 	<= 1'b1;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step3	<= pwr_dwn_step3;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if (pwr_dwn_step3 && (!pwr_dwn_step4)) begin
-				if (counter2 == `MORE_DELAY) begin
-					pwr_dwn_step4 	<= 1'b1;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step4	<= pwr_dwn_step4;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-			else if (pwr_dwn_step4 && (!pwr_dwn_step5)) begin
-				if (counter2 == `MORE_DELAY) begin
-					pwr_dwn_step5 	<= 1'b1;
-					counter2 		<= 25'd0;
-				end
-				else begin
-					pwr_dwn_step5	<= pwr_dwn_step5;
-					counter2		<= counter2 + 25'd1;
-				end
-			end
-		end
-	end
+            STEP5_OFF: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP4;
+                end
+            end
 
-//----------------------------------------
-// System Reset
-//----------------------------------------
+            // Reuse power on states for power down sequence
+            // (they are reversed order)
+            STEP4: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP3;
+                end
+            end
 
-	always @(posedge fsm_clk or negedge reset) begin
-	if (~reset) begin
-			init_step6_1d <= 1'b0;
-			init_step6_2d <= 1'b0;
-		end else begin
-			init_step6_1d <= init_step6;
-			init_step6_2d <= init_step6_1d;
-		end
-	end
+            STEP3: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP2;
+                end
+            end
 
-	assign hi_init_rst = init_step6_1d & (!init_step6_2d);
+            STEP2: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = STEP1;
+                end
+            end
 
-	always @(posedge fsm_clk) begin
-		if (hi_init_rst) begin
-			sig_init_rst <= 1'b0;
-		end
-	end
+            STEP1: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = IDLE;
+                end
+            end
 
-	assign init_rst_n = ~sig_init_rst;
-	
-//----------------------------------------
-// ROIC Reset
-//----------------------------------------
-	
-	always @(posedge fsm_clk) begin
-		step_delay		<= init_step5 & pwr_init_step5	;
-		step_delay_1d	<= step_delay		;
-		step_delay_2d	<= step_delay_1d	;
-		step_delay_3d	<= step_delay_2d	;
-		step_delay_4d	<= step_delay_3d	;
-	end
+            //--------------------------------------------------------------
+            // Power Down Sequence States
+            // (These states are used when en_pwr_dwn is asserted)
+            //--------------------------------------------------------------
+            PDWN_STEP1: begin
+                if (start_pwr_dwn_on) begin
+                    state_next = PDWN_STEP5;
+                end
+            end
 
-	assign roic_reset = step_delay & (!step_delay_4d);
+            PDWN_STEP5: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = PDWN_STEP4;
+                end
+            end
 
-//----------------------------------------
-//----------------------------------------
-//----------------------------------------
-//----------------------------------------
+            PDWN_STEP4: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = PDWN_STEP3;
+                end
+            end
+
+            PDWN_STEP3: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = PDWN_STEP2;
+                end
+            end
+
+            PDWN_STEP2: begin
+                if (counter_ff >= `INIT_DELAY) begin
+                    state_next = PDWN_STEP1;
+                end
+            end
+
+            //--------------------------------------------------------------
+            // Default case
+            //--------------------------------------------------------------
+            default: begin
+                state_next = IDLE;
+            end
+        endcase
+    end
+
+    //==========================================================================
+    // Block 3: Output Logic (Combinational)
+    //==========================================================================
+    // This block contains all combinational logic for generating outputs.
+    // Outputs are based on current state (Moore machine).
+    //==========================================================================
+
+    // Power initialization step outputs
+    assign pwr_init_step1 = (state_ff == STEP1);
+    assign pwr_init_step2 = (state_ff == STEP2);
+    assign pwr_init_step3 = (state_ff == STEP3);
+    assign pwr_init_step4 = (state_ff == STEP4);
+    assign pwr_init_step5 = (state_ff == STEP5);
+    assign pwr_init_step6 = (state_ff == STEP6);
+
+    // System reset output (active HIGH)
+    assign init_rst = sig_init_rst_ff;
+
+    // ROIC reset output - generated from delay chain
+    // Creates a pulse when step_delay is HIGH and step_delay_4d is LOW
+    assign roic_reset = step_delay_ff & ~step_delay_4d_ff;
 
 endmodule

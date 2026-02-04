@@ -1,16 +1,17 @@
 `timescale 1ns / 1ps
 
-///////////////////////////////////////////////////////////////////////////////
 // File: cyan_top.sv
 // Date: 2025.05.19
 // Designer: drake.lee
 // Description: xdaq fpga top file - Converted from VHDL to SystemVerilog
 // Revision History:
 //    2025.05.19 - Initial
-//    2026.02.03 - Extracted TI ROIC integration to ti_roic_integration.sv
+//    Week 5: Extracted ti_roic_integration, mipi_integration, sequencer_wrapper, data_path_integration
+//    Week 6: Extracted debug_integration, sync_processing
+//    Week 7: Extracted gate_driver_output, roic_channel_array
+//    Week 8: Extracted control_signal_mux, power_control
+//    Week 10: Reset standardization (s_seq_reset -> s_seq_reset_n, all modules to active-LOW)
 //
-///////////////////////////////////////////////////////////////////////////////
-
 
 module cyan_top (
     // system signal
@@ -269,9 +270,8 @@ module cyan_top (
     logic [1:0]  ti_roic_str;
     logic [15:0] ti_roic_reg_addr;
     logic [15:0] ti_roic_reg_data;
-    logic gen_sync_start;
-    logic gen_sync_start_3ff;        // CDC-001: 3-stage synchronized signal
-    logic [1:0] s_gen_sync_start_dly;  // Kept for compatibility (will be deprecated)
+    logic gen_sync_start;          // Sync start level signal (in 20MHz domain)
+    logic gen_sync_start_3ff;      // Alias for gen_sync_start (same clock domain, no CDC)
     logic s_gen_sync_start_rise;
 
     // TI ROIC deser signals
@@ -287,7 +287,7 @@ module cyan_top (
     logic [11:0] ti_roic_deser_align_done;
 
     // Sequence table signals
-    logic s_seq_reset;
+    logic s_seq_reset_n;  // Active-LOW sequence reset
     logic [7:0] seq_lut_addr;
     logic [63:0] seq_lut_data;
     logic seq_lut_wr_en;
@@ -329,7 +329,6 @@ module cyan_top (
     logic [31:0] s_sync_repeat_cnt;
     logic [2:0] s_sync_repeat_cnt_mod;
 
-
     logic current_sof_o;
     logic current_eof_o;
     logic [31:0] active_repeat_count_o;
@@ -358,9 +357,6 @@ module cyan_top (
     logic s_state_exit_flag;
     logic s_aed_detect_skip_oe_o;
 
-
-    ///////////////////////////////////////////////////////////////////////////////
-
     /////////////////////////////////////////////////////////////////////////////
     // Week 4: Clock Generation Module (TOP-001 Phase 1)
     /////////////////////////////////////////////////////////////////////////////
@@ -383,21 +379,37 @@ module cyan_top (
 
     // clk_ctrl module instantiation
 
-    // MIPI CSI2 TX module instantiation
-    mipi_csi2_tx_top inst_mipi_csi2_tx (
-        .reset                  (~rst_n_200mhz),
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 5: MIPI CSI-2 TX Integration Module (TOP-001 Phase 2)
+    /////////////////////////////////////////////////////////////////////////////
+    
+    // MIPI CSI-2 TX integration - encapsulates MIPI CSI-2 TX top and AXI stream processing
+    mipi_integration mipi_integration_inst (
+        // Clocks and resets
         .dphy_clk_200M          (s_dphy_clk_200M),
         .clk_100M               (s_clk_100mhz),
         .eim_clk                (eim_clk),
-        .locked_i               (s_clk_lock),
+        .rst_n_200mhz           (rst_n_200mhz),
+        .clk_lock               (s_clk_lock),
+        
+        // Frame control
         .read_frame_reset       (s_read_frame_reset),
-        .s_axis_tdata_a         (s_axis_tdata_a),
-        .s_axis_tdata_b         (s_axis_tdata_b),
-        .s_axis_tlast           (s_read_axis_tlast),
-        .s_axis_tready          (s_read_axis_tready),
-        .s_axis_tvalid          (s_read_axis_tvalid),
-        .s_axis_tstrb           (3'b000),            // All bits active
-        .s_axis_tkeep           (3'b111),            // All bits kept
+        
+        // AXI-Stream interface
+        .axis_tdata_a           (s_axis_tdata_a),
+        .axis_tdata_b           (s_axis_tdata_b),
+        .axis_tlast             (s_read_axis_tlast),
+        .axis_tready            (s_read_axis_tready),
+        .axis_tvalid            (s_read_axis_tvalid),
+        .axis_tstrb             (3'b000),
+        .axis_tkeep             (3'b111),
+        
+        // CSI-2 control/status
+        .csi2_word_count        (csi2_word_count),
+        .axis_video_tuser       (s_axis_video_tuser),
+        .csi_done               (s_csi_done),
+        
+        // MIPI PHY interface
         .mipi_phy_if_clk_hs_p   (mipi_phy_if_clk_hs_p),
         .mipi_phy_if_clk_hs_n   (mipi_phy_if_clk_hs_n),
         .mipi_phy_if_clk_lp_p   (mipi_phy_if_clk_lp_p),
@@ -406,18 +418,17 @@ module cyan_top (
         .mipi_phy_if_data_hs_n  (mipi_phy_if_data_hs_n),
         .mipi_phy_if_data_lp_p  (mipi_phy_if_data_lp_p),
         .mipi_phy_if_data_lp_n  (mipi_phy_if_data_lp_n),
-        .csi2_word_count        (csi2_word_count),
-        .m_axis_video_tuser     (s_axis_video_tuser),
-        .done                   (s_csi_done),
+        
+        // Status (unused)
         .interrupt              (),
         .status                 (),
         .system_rst_out         ()
     );
 
-    // init module instantiation
+    // init module instantiation (RST-001 fix: removed reset inversion)
     init init_inst (
         .fsm_clk            (s_clk_20mhz),
-        .reset              (~rst_n_20mhz),
+        .rst_n              (rst_n_20mhz),  // Active-LOW reset (direct connection, no inversion)
         .en_pwr_off         (en_pwr_off),
         .en_pwr_dwn         (en_pwr_dwn),
         .init_rst           (init_rst),
@@ -527,7 +538,6 @@ module cyan_top (
         .unused_stv_sel_l2         (unused_stv_sel_l2),
         .unused_stv_sel_r2         (unused_stv_sel_r2)
     );
-    );
 
     // assign disable_aed_read_xao = 1'b1; // For Gemini, AED read XAO is always enabled
 
@@ -556,62 +566,74 @@ module cyan_top (
     assign col_cnt = s_sync_col_cnt[15:0];
     assign col_end = (s_sync_col_cnt == 16'd0) ? 1'b1 : 1'b0;
 
-    assign FSM_rst_index        = reset_state_o     ? 1'b1 : 1'b0;
-    assign FSM_wait_index       = wait_o            ? 1'b1 : 1'b0;
-    assign FSM_aed_read_index   = aed_enable_o      ? 1'b1 : 1'b0;
-    assign FSM_back_bias_index  = bias_enable_o     ? 1'b1 : 1'b0;
-    assign FSM_flush_index      = flush_enable_o    ? 1'b1 : 1'b0;
-    assign FSM_exp_index        = expose_enable_o   ? 1'b1 : 1'b0;
-    assign FSM_read_index       = readout_enable_o  ? 1'b1 : 1'b0;
-    assign FSM_idle_index       = idle_elable_o     ? 1'b1 : 1'b0;
-
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 5: Sequencer Wrapper Module (TOP-001 Phase 2)
+    /////////////////////////////////////////////////////////////////////////////
+    
+    // Sequencer wrapper - encapsulates sequencer FSM and index generation
     logic [11:0] s_roic_even_odd_out;
-
-    // Sequence table module instantiation
-    sequencer_fsm seq_fsm_inst (
-        .clk                (s_clk_20mhz),
-        .reset_i            (~rst_n_20mhz),
-        .config_done_i      (s_sync_config_done),
-        .lut_addr_i         (seq_lut_addr),
-        .lut_wen_i          (seq_lut_wr_en),
-        .lut_write_data_i   (seq_lut_data),
-        .lut_read_data_o    (seq_lut_read_data),
-        .acq_mode_i         (acq_mode),
-        .expose_size_i      (acq_expose_size),
-        .exit_signal_i      (exit_signal_i),
-        .roic_even_odd_i    (s_roic_even_odd_out[0]),
-        .readout_wait       (s_readout_wait),
-        .state_exit_flag_o  (s_state_exit_flag),
-        .current_state_o    (current_state_o),
-        .busy_o             (busy_o),
-        .sequence_done_o    (sequence_done_o),
-        .reset_state_o      (reset_state_o),
-        .wait_o             (wait_o),
-        .bias_enable_o      (bias_enable_o),
-        .flush_enable_o     (flush_enable_o),
-        .expose_enable_o    (expose_enable_o),
-        .readout_enable_o   (readout_enable_o),
-        .aed_enable_o       (aed_enable_o),
-        .stv_mask_o         (stv_mask_o),
-        .csi_mask_o         (csi_mask_o),
-        .panel_stable_o     (panel_stable_o),
-        .iterate_exist_o    (iterate_exist_o),
-        .idle_elable_o      (idle_elable_o),
-        .current_sof_o      (current_sof_o),
-        .current_eof_o      (current_eof_o),
-        .acq_mode_o         (acq_mode_o),
-        .expose_size_o      (expose_size_o),
-        .current_repeat_count_o (current_repeat_count_o),
-        .active_repeat_count_o  (active_repeat_count_o),
-        .current_data_length_o  (current_data_length_o)
+    
+    sequencer_wrapper sequencer_wrapper_inst (
+        // Clocks and resets
+        .clk_20mhz               (s_clk_20mhz),
+        .rst_n_20mhz             (rst_n_20mhz),
+        .rst                     (rst),
+        
+        // Configuration interface
+        .config_done_i           (s_sync_config_done),
+        .lut_addr_i              (seq_lut_addr),
+        .lut_wen_i               (seq_lut_wr_en),
+        .lut_write_data_i        (seq_lut_data),
+        .lut_read_data_o         (seq_lut_read_data),
+        
+        // Control inputs
+        .acq_mode_i              (acq_mode),
+        .expose_size_i           (acq_expose_size),
+        .exit_signal_i           (exit_signal_i),
+        .roic_even_odd_i         (s_roic_even_odd_out[0]),
+        .readout_wait            (s_readout_wait),
+        
+        // FSM outputs
+        .state_exit_flag_o       (s_state_exit_flag),
+        .current_state_o         (current_state_o),
+        .busy_o                  (busy_o),
+        .sequence_done_o         (sequence_done_o),
+        .reset_state_o           (reset_state_o),
+        .wait_o                  (wait_o),
+        .bias_enable_o           (bias_enable_o),
+        .flush_enable_o          (flush_enable_o),
+        .expose_enable_o         (expose_enable_o),
+        .readout_enable_o        (readout_enable_o),
+        .aed_enable_o            (aed_enable_o),
+        .stv_mask_o              (stv_mask_o),
+        .csi_mask_o              (csi_mask_o),
+        .panel_stable_o          (panel_stable_o),
+        .iterate_exist_o         (iterate_exist_o),
+        .idle_elable_o           (idle_elable_o),
+        .current_sof_o           (current_sof_o),
+        .current_eof_o           (current_eof_o),
+        .acq_mode_o              (acq_mode_o),
+        .expose_size_o           (expose_size_o),
+        .current_repeat_count_o  (current_repeat_count_o),
+        .active_repeat_count_o   (active_repeat_count_o),
+        .current_data_length_o   (current_data_length_o),
+        
+        // Index outputs (FSM control signals)
+        .FSM_rst_index           (FSM_rst_index),
+        .FSM_wait_index          (FSM_wait_index),
+        .FSM_aed_read_index      (FSM_aed_read_index),
+        .FSM_back_bias_index     (FSM_back_bias_index),
+        .FSM_flush_index         (FSM_flush_index),
+        .FSM_exp_index           (FSM_exp_index),
+        .FSM_read_index          (FSM_read_index),
+        .FSM_idle_index          (FSM_idle_index)
     );
 
     assign s_wait_tp_sel = (wait_o && current_eof_o) ? 1'b1 : 1'b0;
     assign s_wait_sync   = (wait_o && current_sof_o) ? 1'b1 : 1'b0;
     assign s_wait_roic_sync = (s_wait_sync_dly == 3'd3) ? 1'b1 : 1'b0;
 
-
-    assign s_seq_reset = (~rst_n_20mhz) ? 1'b1 : 1'b0;
+    assign s_seq_reset_n = rst_n_20mhz;  // Active-LOW reset follows rst_n_20mhz
 
     assign valid_repeat_count_o = s_sync_current_repeat_count_o - 32'd2;
 
@@ -624,8 +646,8 @@ module cyan_top (
                             stv_mask_o     , csi_mask_o  , sequence_done_o, busy_o,
                             current_state_o};
 
-    always_ff @(posedge s_clk_20mhz or posedge s_seq_reset) begin
-        if (s_seq_reset) begin
+    always_ff @(posedge s_clk_20mhz or negedge s_seq_reset_n) begin
+        if (!s_seq_reset_n) begin
             s_get_dark_dly <= 2'b00;
             s_get_bright_dly <= 2'b00;
             s_get_aed_trig_dly <= 2'b00;
@@ -657,8 +679,8 @@ module cyan_top (
     assign exit_signal_i = (s_exit_signal_dark || s_exit_signal_bright || s_exit_signal_aed) ? 1'b1 : 1'b0;
     assign ready_to_get_image = exit_signal_i;
 
-    always_ff @(posedge s_clk_20mhz or posedge s_seq_reset) begin
-        if (s_seq_reset) begin
+    always_ff @(posedge s_clk_20mhz or negedge s_seq_reset_n) begin
+        if (!s_seq_reset_n) begin
             s_exit_signal_dark <= 1'b0;
             s_exit_signal_bright <= 1'b0;
             s_exit_signal_aed <= 1'b0;
@@ -690,7 +712,7 @@ module cyan_top (
         end
     end
 
-// ====================================================================
+==================================================
     // Read RX data processing
     always_ff @(posedge eim_clk or negedge eim_rst) begin
         if (!rst_n_eim) begin
@@ -704,46 +726,98 @@ module cyan_top (
         end
     end
 
-
+    // STV mask signal (used by debug_integration, kept for compatibility)
     assign s_mask_stv = (s_sync_stv_mask_o == 1'b1) ? s_tg_stv : 1'b0;
 
-    assign GF_CPV = s_tg_cpv;
-    assign GF_STV_R = (sig_gate_lr1== 1'b0) ? s_mask_stv : 1'bz;
-    assign GF_STV_L = (sig_gate_lr1== 1'b1) ? s_mask_stv : 1'bz;
-    assign GF_OE = s_tg_oe;
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 7: Gate Driver Output Module (M7-1)
+    /////////////////////////////////////////////////////////////////////////////
+    // Gate driver output control with tri-state logic and XAO sequencing
+    
+    gate_driver_output gate_driver_output_inst (
+        // Clock and Reset
+        .clk_20mhz               (s_clk_20mhz),
+        .rst_n_20mhz             (rst_n_20mhz),
+        
+        // Timing Generator Inputs
+        .tg_stv                  (s_tg_stv),
+        .tg_cpv                  (s_tg_cpv),
+        .tg_oe                   (s_tg_oe),
+        
+        // STV Mask Control
+        .stv_mask_o              (s_sync_stv_mask_o),
+        
+        // Gate Select Control
+        .sig_gate_lr1            (sig_gate_lr1),
+        
+        // XAO Gate Inputs (from roic_gate_drv_gemini)
+        .gate_xao_0              (gate_xao_0),
+        .gate_xao_1              (gate_xao_1),
+        .gate_xao_2              (gate_xao_2),
+        .gate_xao_3              (gate_xao_3),
+        .gate_xao_4              (gate_xao_4),
+        .gate_xao_5              (gate_xao),
+        
+        // Sync/Repeat Counter (for XAO sequencing)
+        .sync_repeat_cnt         (s_sync_repeat_cnt),
+        
+        // FSM Index Inputs (for XAO enable)
+        .fsm_flush_index         (s_sync_fsm_flush_index),
+        .fsm_back_bias_index     (s_sync_fsm_back_bias_index),
+        
+        // Gate Driver Outputs
+        .GF_CPV                  (GF_CPV),
+        .GF_STV_R                (GF_STV_R),
+        .GF_STV_L                (GF_STV_L),
+        .GF_OE                   (GF_OE),
+        .GF_LR                   (GF_LR),
+        .GF_XAO                  (GF_XAO)
+    );
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 8: Power Control Module (M8-2)
+    /////////////////////////////////////////////////////////////////////////////
+    // Power control for ROIC bias voltage sequencing
+    // - Encapsulates power sequencing control
+    // - Bias voltage control (VBIAS, AVDD1, AVDD2)
+    // - Power-on initialization coordination
 
-    assign GF_LR = sig_gate_lr1;
+    power_control power_control_inst (
+        // Clock and Reset
+        .clk_20mhz               (s_clk_20mhz),
+        .rst_n_20mhz             (rst_n_20mhz),
 
-    assign s_sync_repeat_cnt_mod = s_sync_repeat_cnt % 32'd6;
-    assign s_sync_xao_enable = (s_sync_fsm_flush_index || s_sync_fsm_back_bias_index) ? 1'b1 : 1'b0;
+        // Power Initialization Control (from init module)
+        .pwr_init_step1          (s_pwr_init_step1),
+        .pwr_init_step2          (s_pwr_init_step2),
+        .pwr_init_step3          (s_pwr_init_step3),
+        .pwr_init_step4          (s_pwr_init_step4),
+        .pwr_init_step5          (s_pwr_init_step5),
+        .pwr_init_step6          (s_pwr_init_step6),
 
-    assign GF_XAO[5] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd5) ? gate_xao_0 : 1'b1;
-    assign GF_XAO[4] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd4) ? gate_xao_1 : 1'b1;
-    assign GF_XAO[3] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd3) ? gate_xao_2 : 1'b1;
-    assign GF_XAO[2] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd2) ? gate_xao_3 : 1'b1;
-    assign GF_XAO[1] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd1) ? gate_xao_4 : 1'b1;
-    assign GF_XAO[0] = (s_sync_xao_enable && s_sync_repeat_cnt_mod == 32'd0) ? gate_xao   : 1'b1;
+        // Back Bias Control (from roic_gate_drv_gemini)
+        .back_bias               (s_back_bias),
 
-    ///////////////////////////////////////////////////////////////////////////////
+        // FSM Reset Control (RST-004 fix: init_rst removed, generated by init module)
+        .fsm_rst_index           (FSM_rst_index),
+
+        // ROIC Bias Power Outputs
+        .ROIC_VBIAS              (ROIC_VBIAS),
+        .ROIC_AVDD1              (ROIC_AVDD1),
+        .ROIC_AVDD2              (ROIC_AVDD2)
+    );
+
     // Week 2: Standardized Reset Signals (All Active-LOW)
-    ///////////////////////////////////////////////////////////////////////////////
     
     // Internal control signals (reused)
     
     // FSM driver reset (active-LOW)
     logic fsm_drv_rst;
     assign fsm_drv_rst = rst_n_20mhz & ~FSM_rst_index;
-    assign init_rst = ~rst_n_20mhz;        // init_rst is active-HIGH internally
-
 
     assign ROIC_TP_SEL  = ti_roic_tp_sel;
     assign ROIC_MCLK0   = s_clk_20mhz;
     assign ROIC_MCLK1   = s_clk_20mhz;
     assign ROIC_SYNC    = ti_roic_sync;
-
-    assign ROIC_VBIAS = s_back_bias;
-    assign ROIC_AVDD1 = s_pwr_init_step1;
-    assign ROIC_AVDD2 = s_pwr_init_step2;
 
     // TI ROIC module interface
     //--------------------------------------------------------------------------
@@ -754,7 +828,9 @@ module cyan_top (
     //--------------------------------------------------------------------------
     // Clock and Reset Signals
     //--------------------------------------------------------------------------
-    logic deser_reset;               // Deserializer reset
+    // RST-005 fix: Standardized on active-LOW reset only
+    logic deser_reset_n;             // Deserializer reset (active-LOW)
+    assign deser_reset_n = rst_n_20mhz;
 
     // Bit Alignment Signals
     //--------------------------------------------------------------------------
@@ -803,14 +879,15 @@ module cyan_top (
 
     assign RF_SPI_SEN = {12{s_rf_spi_sen}};
 
-    // gen_sync_start is already in the 20MHz domain, direct connection
+    // CDC-005 Fix: gen_sync_start_3ff is now properly named
+    // Both signals are in the 20MHz domain - direct connection is correct
+    // The _3ff suffix is kept for compatibility but no actual CDC occurs
     assign gen_sync_start_3ff = gen_sync_start;
 
-    //==========================================================================
     // TI ROIC Integration Module
     //   - Encapsulates TI ROIC SPI and Timing Generator
     //   - Extracted from cyan_top.sv (2026-02-03)
-    //==========================================================================
+
     ti_roic_integration ti_roic_integration_inst (
         // Clocks and resets
         .clk_5mhz              (s_clk_5mhz),
@@ -862,117 +939,64 @@ module cyan_top (
         .s_DF_SM5              (s_DF_SM5)
     );
 
+    // Week 7: ROIC Channel Array Module (M7-2)
 
-        //     ti_roic_top #(
-        //         .DATA_WIDTH    (WORD_SIZE),     // 24-bit data width
-        //         .IOSTANDARD    ("LVDS_25"),     // LVDS_25 standard for test environment
-        //         .REFCLK_FREQ   (200.0),         // 200MHz reference clock frequency
-        //         .PATTERN_1     (24'hFFF000),    // First alignment pattern
-        //         .PATTERN_2     (24'hFF0000)     // Second alignment pattern
-        //     ) ti_roic_top_inst_0 (
-        //         // Control and reset inputs
-        //         .clk_reset          (s_reset),
-        //         .data_reset         (deser_reset),
-
-        //         // LVDS differential inputs
-        //         .fclk_in_p           (R_ROIC_FCLKo_p[0]),
-        //         .fclk_in_n           (R_ROIC_FCLKo_n[0]),
-        //         // LVDS differential inputs
-        //         .clk_in_p           (R_ROIC_DCLKo_p[0]),
-        //         .clk_in_n           (R_ROIC_DCLKo_n[0]),
-        //         .data_in_p          (R_DOUTA_H[0]),
-        //         .data_in_n          (R_DOUTA_L[0]),
-
-        //         // Delay control interface
-        //         .ld_dly_tap         (ld_dly_tap),
-        //         .delay_data_ce      (in_delay_data_ce),
-        //         .delay_data_inc     (in_delay_data_inc),
-        //         .delay_tap_in       (in_delay_tap_in),
-        //         .delay_tap_out      (in_delay_tap_out[0]),
-
-        //         // Bit alignment control
-        //         .align_to_fclk      (align_to_fclk),
-        //         .align_start        (align_start),
-        //         .extra_shift        (extra_shift[0]),
-
-        //         // Data reordering control
-        //         .sync               (ti_roic_sync),
-
-        //         .data_read_req      (data_read_req[0]),
-
-        //         .data_read_clk      (s_axi_clk_200M),
-
-        //         // ila check
-        //         .deser_data         (deser_data[0]),
-        //         .aligned_data       (aligned_data[0]),
-
-        //         .fclk_out           (s_fclk_in[0]),
-
-        //         // Output signals
-        //         .bit_clk            (bit_clk[0]),
-        //         .shift_out          (shift_out[0]),
-        //         .align_done         (align_done[0]),
-        //         .valid_read_enable  (valid_read_enable[0]),
-        //         .reordered_data_a   (reordered_data_a[0]),
-        //         .reordered_data_b   (reordered_data_b[0]),
-        //         .reordered_valid    (reordered_valid[0]),
-        //         .channel_detected   (channel_detected[0])
-        //     );
-
-
-    genvar i;
-    generate
-        for (i = 0; i < 12; i++) begin : gen_ti_roic_top
-            ti_roic_top #(
-                .DATA_WIDTH    (WORD_SIZE),     // 24-bit data width
-                .IOSTANDARD    ("LVDS_25"),     // LVDS_25 standard for test environment
-                .REFCLK_FREQ   (200.0),         // 200MHz reference clock frequency
-                .PATTERN_1     (24'hFFF000),    // First alignment pattern
-                .PATTERN_2     (24'hFF0000)     // Second alignment pattern
-            ) ti_roic_top_inst (
-                // Control and reset inputs
-                .clk_reset          (s_reset),
-                .data_reset         (deser_reset),
-                // LVDS differential inputs
-                .fclk_in_p           (R_ROIC_FCLKo_p[i]),
-                .fclk_in_n           (R_ROIC_FCLKo_n[i]),
-                // LVDS differential inputs
-                .clk_in_p           (R_ROIC_DCLKo_p[i]),
-                .clk_in_n           (R_ROIC_DCLKo_n[i]),
-                .data_in_p          (R_DOUTA_H[i]),
-                .data_in_n          (R_DOUTA_L[i]),
-
-                // Bit alignment control
-                .align_to_fclk      (align_to_fclk),
-                .align_start        (align_start),
-                .extra_shift        (extra_shift[i]),
-
-                // Data reordering control
-                .en_test_pattern_col    (en_test_pattern_col),
-                .en_test_pattern_row    (en_test_pattern_row),
-
-                .sync               (s_roic_sync_out),
-
-                .data_read_req      (data_read_req[i]),
-
-                .data_read_clk      (s_dphy_clk_200M),
-
-                //for debug signal
-                .even_odd_toggle_out (s_even_odd_toggle_out[i]),
-                .roic_even_odd_out  (s_roic_even_odd_out[i]),
-
-                // Output signals
-                .shift_out          (shift_out[i]),
-                .align_done         (align_done[i]),
-                .valid_read_enable  (valid_read_enable[i]),
-                .reordered_data_a   (reordered_data_a[i]),
-                .reordered_data_b   (reordered_data_b[i]),
-                .reordered_valid    (reordered_valid[i]),
-                .detected_data_out  (detected_data_out[i]),
-                .channel_detected   (channel_detected[i])
-            );
-        end
-    endgenerate
+    // TI ROIC 12-Channel Array - encapsulates ti_roic_top instances
+    // - LVDS differential input interfaces for 12 channels
+    // - Bit alignment and data reordering control
+    // - Channel detection and valid read enable outputs
+    // Extracted from cyan_top.sv (2026-02-03)
+    
+    roic_channel_array roic_channel_array_inst (
+        // Clock and Reset
+        .deser_reset_n         (deser_reset_n),       // RST-005 fix: active-LOW reset
+        .data_read_clk         (s_dphy_clk_200M),      // 200MHz read clock
+        
+        // LVDS Differential Clock Inputs
+        .fclk_in_p             (R_ROIC_FCLKo_p),       // Frame clock positive
+        .fclk_in_n             (R_ROIC_FCLKo_n),       // Frame clock negative
+        .clk_in_p              (R_ROIC_DCLKo_p),       // Data clock positive
+        .clk_in_n              (R_ROIC_DCLKo_n),       // Data clock negative
+        
+        // LVDS Differential Data Inputs
+        .data_in_p             (R_DOUTA_H),            // Data positive
+        .data_in_n             (R_DOUTA_L),            // Data negative
+        
+        // Bit Alignment Control
+        .align_to_fclk         (align_to_fclk),        // Alignment mode select
+        .align_start           (align_start),          // Start alignment
+        .extra_shift           (extra_shift),          // Additional shift per channel
+        
+        // Test Pattern Control
+        .en_test_pattern_col   (en_test_pattern_col),  // Column pattern enable
+        .en_test_pattern_row   (en_test_pattern_row),  // Row pattern enable
+        
+        // Data Reordering Control
+        .sync                  (s_roic_sync_out),      // Sync for reordering
+        
+        // Data Read Control
+        .data_read_req         (data_read_req),        // Read request per channel
+        
+        // Bit Alignment Outputs
+        .shift_out             (shift_out),            // Shift amount per channel
+        .align_done            (align_done),           // Alignment complete
+        
+        // Data Read Enable Outputs
+        .valid_read_enable     (valid_read_enable),    // Read enable
+        
+        // Reordered Data Outputs
+        .reordered_data_a      (reordered_data_a),     // Data A
+        .reordered_data_b      (reordered_data_b),     // Data B
+        .reordered_valid       (reordered_valid),      // Data valid
+        
+        // Debug Outputs
+        .even_odd_toggle_out   (s_even_odd_toggle_out), // Toggle output
+        .roic_even_odd_out     (s_roic_even_odd_out),   // ROIC even/odd
+        
+        // Channel Detection Outputs
+        .detected_data_out     (detected_data_out),    // Detected data
+        .channel_detected      (channel_detected)      // Detection flag
+    );
 
     assign s_sum_channel_detected = |(channel_detected & align_done);
 
@@ -986,37 +1010,56 @@ module cyan_top (
     //     .RST        (s_reset)
     // );
 
-
-    // read_data_mux module instantiation
-    assign valid_roic_data = |valid_read_enable;
-
-    assign valid_read_mem = |reordered_valid;
-
-    read_data_mux read_data_mux_inst (
-        .sys_clk                (s_clk_100mhz),
-        .sys_rst                (rst_n_100mhz),  // Week 2: Standardized active-LOW
-        .eim_clk                (eim_clk),
-        .eim_rst                (rst_n_eim),      // Week 2: Standardized active-LOW
-        .csi_done               (s_csi_done),
-        .dummy_get_image        (dummy_get_image),
-        .exist_get_image        (),
-        .dsp_image_height       (dsp_image_height),
-        .max_v_count            (max_v_count),
-        .max_h_count            (max_h_count),
-        .FSM_aed_read_index     (FSM_aed_read_index),
-        .read_data_start        (s_read_data_start),
-        .FSM_read_index         (s_valid_readout),
-        .roic_read_data_a       (reordered_data_a),
-        .roic_read_data_b       (reordered_data_b),
-        .valid_read_mem         (valid_read_mem),
-        .read_axis_tready       (s_read_axis_tready),
-        .read_axis_tlast        (s_read_axis_tlast),
-        .read_data_valid        (s_read_axis_tvalid),
-        .read_data_out_a        (s_read_rx_data_a),
-        .read_data_out_b        (s_read_rx_data_b),
-        .read_frame_start       (s_read_frame_start),
-        .read_frame_reset       (s_read_frame_reset),
-        .data_read_req          (data_read_req)
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 5: Data Path Integration Module (TOP-001 Phase 2)
+    /////////////////////////////////////////////////////////////////////////////
+    
+    // Data path integration - encapsulates read_data_mux and data processing
+    data_path_integration data_path_inst (
+        // Clocks and resets
+        .clk_100mhz              (s_clk_100mhz),
+        .eim_clk                 (eim_clk),
+        .rst_n_100mhz            (rst_n_100mhz),
+        .rst_n_eim               (rst_n_eim),
+        .dphy_clk_200M           (s_dphy_clk_200M),
+        
+        // CSI control
+        .csi_done                (s_csi_done),
+        
+        // Image acquisition control
+        .dummy_get_image         (dummy_get_image),
+        .dsp_image_height        (dsp_image_height),
+        .max_v_count             (max_v_count),
+        .max_h_count             (max_h_count),
+        
+        // FSM control
+        .FSM_aed_read_index      (FSM_aed_read_index),
+        .read_data_start         (s_read_data_start),
+        .FSM_read_index          (s_valid_readout),
+        
+        // ROIC data inputs (from TI ROIC)
+        .roic_read_data_a        (reordered_data_a),
+        .roic_read_data_b        (reordered_data_b),
+        .reordered_valid         (reordered_valid),
+        
+        // AXI-Stream interface (to MIPI)
+        .read_axis_tready        (s_read_axis_tready),
+        .read_axis_tready_in     (),
+        .read_axis_tlast         (s_read_axis_tlast),
+        .read_data_valid         (s_read_axis_tvalid),
+        .read_data_out_a         (s_read_rx_data_a),
+        .read_data_out_b         (s_read_rx_data_b),
+        
+        // Frame control
+        .read_frame_start        (s_read_frame_start),
+        .read_frame_reset        (s_read_frame_reset),
+        
+        // Data read request (to TI ROIC)
+        .data_read_req           (data_read_req),
+        
+        // Valid data outputs (for status)
+        .valid_roic_data         (valid_roic_data),
+        .valid_read_mem          (valid_read_mem)
     );
 
     assign PREP_ACK = PREP_REQ;
@@ -1040,171 +1083,209 @@ module cyan_top (
 
     assign SWITCH_SYNC = s_clk_1mhz;
 
-    // ========================================================
+    ======================================
     // Controls signals
-    // ========================================================
+    ======================================
 
     assign s_roic_sdio = RF_SPI_SDO;
 
-    always_ff @(posedge s_clk_20mhz or posedge deser_reset) begin
-        if (deser_reset) begin
-            ti_roic_sync <= 1'b0;
-            ti_roic_tp_sel <= 1'b0;
-            s_roic_tp_sel <= 1'b0;
-            s_roic_sync_in <= 1'b0;
+    // Week 8: Control Signal Multiplexer Module (M8-1)
+
+    // Control signal multiplexing between register and FSM sources
+    // - Extracted from cyan_top.sv (2026-02-03)
+    // - Handles mux between register-controlled and FSM-controlled signals
+    // - Deserializer reset-based signal synchronization
+    
+    control_signal_mux control_signal_mux_inst (
+        // Clock and Reset
+        .clk_20mhz               (s_clk_20mhz),
+        .deser_reset             (deser_reset),
+        
+        // TI ROIC Integration Outputs (pass-through/registered)
+        .ti_roic_sync_out        (s_roic_sync_out),
+        
+        // Register-based Control Inputs (from reg_map_integration)
+        .reg_tp_sel              (s_reg_tp_sel),
+        .reg_roic_sync           (s_reg_roic_sync),
+        
+        // FSM-based Control Inputs (from sequencer via sync_processing)
+        .fsm_wait_tp_sel         (s_wait_tp_sel),
+        .fsm_wait_roic_sync      (s_wait_roic_sync),
+        
+        // Final Control Outputs (to TI ROIC Integration)
+        .roic_sync_in            (s_roic_sync_in),
+        .roic_tp_sel             (s_roic_tp_sel),
+        
+        // Final Control Outputs (to Top-Level ROIC Interface)
+        .ti_roic_sync            (ti_roic_sync),
+        .ti_roic_tp_sel          (ti_roic_tp_sel)
+    );
+
+    // Week 6: Sync Processing Module (M6-2)
+
+    // Sync signal processing and pipeline synchronization
+    // - Edge detection for gen_sync_start
+    // - Column counter for image width tracking
+    // - FSM signal synchronization/pipeline
+
+    
+    sync_processing sync_processing_inst (
+        // Clock and Reset
+        .clk_20mhz                  (s_clk_20mhz),
+        .rst_n_20mhz                (rst_n_20mhz),
+        
+        // Control Inputs
+        .gen_sync_start             (gen_sync_start),
+        .config_done_i              (s_config_done_i),
+        
+        // Sequencer/FSM Inputs (to be captured/synchronized)
+        .active_repeat_count_o      (active_repeat_count_o),
+        .stv_mask_o                 (stv_mask_o),
+        .csi_mask_o                 (csi_mask_o),
+        .current_repeat_count_o     (current_repeat_count_o),
+        .FSM_read_index             (FSM_read_index),
+        .FSM_flush_index            (FSM_flush_index),
+        .FSM_back_bias_index        (FSM_back_bias_index),
+        
+        // Synchronized Outputs
+        .gen_sync_start_rise        (s_gen_sync_start_rise),
+        .sync_repeat_cnt            (s_sync_repeat_cnt),
+        .sync_col_cnt               (s_sync_col_cnt),
+        .sync_stv_mask_o            (s_sync_stv_mask_o),
+        .sync_csi_mask_o            (s_sync_csi_mask_o),
+        .sync_current_repeat_count_o(s_sync_current_repeat_count_o),
+        .sync_config_done           (s_sync_config_done),
+        .sync_fsm_read_index        (s_sync_fsm_read_index),
+        .sync_fsm_flush_index       (s_sync_fsm_flush_index),
+        .sync_fsm_back_bias_index   (s_sync_fsm_back_bias_index)
+    );
+
+    // Sync Start Latch (CDC-005 Fix)
+
+    // gen_sync_start is a level signal that indicates sync operation is active
+    // - Set on rising edge of sync start pulse
+    // - Reset on sequence completion
+    // All logic is in the 20MHz clock domain - no CDC required
+
+    
+    always_ff @(posedge s_clk_20mhz or negedge rst_n_20mhz) begin
+        if (!rst_n_20mhz) begin
+            gen_sync_start <= 1'b0;
         end else begin
-            ti_roic_sync <= s_roic_sync_out;
-            ti_roic_tp_sel <= (s_reg_tp_sel | s_wait_tp_sel);  
-
-            s_roic_tp_sel <= (s_reg_tp_sel | s_wait_tp_sel);  
-            s_roic_sync_in <= (s_reg_roic_sync | s_wait_roic_sync);
-        end
-    end
-
-
-    always_ff @(posedge s_clk_20mhz or posedge deser_reset) begin
-        if (deser_reset) begin
-            s_gen_sync_start_dly <= 2'd0;
-            s_gen_sync_start_rise <= 1'b0;
-            s_sync_repeat_cnt <= 32'd0;
-            s_sync_col_cnt <= 16'd0;
-            s_sync_stv_mask_o <= 1'b0;
-            s_sync_csi_mask_o <= 1'b0;
-            s_sync_current_repeat_count_o <= 32'd0;
-            s_sync_config_done <= 1'b0;
-            s_sync_fsm_read_index <= 1'b0;
-            s_sync_fsm_flush_index <= 1'b0;
-            s_sync_fsm_back_bias_index <= 1'b0;
-        end else begin
-
+            // Set on sync start pulse, reset on sequence done
             if (s_gen_sync_start_rise) begin
-                s_sync_repeat_cnt <= active_repeat_count_o;
-                s_sync_stv_mask_o <= stv_mask_o;
-                s_sync_csi_mask_o <= csi_mask_o;
-                s_sync_current_repeat_count_o <= current_repeat_count_o;
-                s_sync_config_done <= s_config_done_i;
-                s_sync_fsm_read_index <= FSM_read_index;
-                s_sync_fsm_flush_index <= FSM_flush_index;
-                s_sync_fsm_back_bias_index <= FSM_back_bias_index;
-            end 
-
-            if (s_gen_sync_start_rise) begin
-                s_sync_col_cnt <= 16'd0;
-            end else begin
-                s_sync_col_cnt <= s_sync_col_cnt + 1'b1;
+                gen_sync_start <= 1'b1;
+            end else if (sequence_done_o) begin
+                gen_sync_start <= 1'b0;
             end
-
-            s_gen_sync_start_dly <= {s_gen_sync_start_dly[0], gen_sync_start};
-            s_gen_sync_start_rise <= ~s_gen_sync_start_dly[1] & s_gen_sync_start_dly[0];
         end
     end
 
-    // ========================================================
-    // Sync processing
-    // ========================================================
-    // fifo_1b #(
-    //     .DATA_WIDTH    (1),
-    //     .DEPTH         (1)
-    // ) fifo_sync_get_imgae_inst (
-    //     .rst        (s_reset),
-    //     .clk        (s_clk_20mhz),
-    //     .wr_en      (s_gen_sync_start_rise),
-    //     .rd_en      (s_readout_exist_rise),
-    //     .din        (1'b1),
-    //     .dout       (gen_sync_start),
-    //     .full       (),
-    //     .empty      ()
-    // );
-
-
-    // LED indicator for internal states
-
-    always_comb begin
-        case (s_state_led_ctr)
-            8'h00: STATE_LED1 = s_test_cnt[23];
-            8'h01: STATE_LED1 = FSM_idle_index;
-            8'h02: STATE_LED1 = FSM_read_index;
-            8'h03: STATE_LED1 = FSM_exp_index;
-            8'h04: STATE_LED1 = FSM_aed_read_index;
-            8'h05: STATE_LED1 = s_sync_fsm_flush_index;
-            8'h06: STATE_LED1 = s_sync_fsm_back_bias_index;
-            8'h07: STATE_LED1 = FSM_wait_index;
-            8'h08: STATE_LED1 = FSM_rst_index;
-            8'h09: STATE_LED1 = valid_roic_data;
-            8'h0A: STATE_LED1 = valid_read_mem;
-            8'h0B: STATE_LED1 = s_sync_fsm_read_index;
-            8'h20: STATE_LED1 = channel_detected[0];
-            8'h21: STATE_LED1 = channel_detected[1];
-            8'h22: STATE_LED1 = channel_detected[2];
-            8'h23: STATE_LED1 = channel_detected[3];
-            8'h24: STATE_LED1 = channel_detected[4];
-            8'h25: STATE_LED1 = channel_detected[5];
-            8'h26: STATE_LED1 = channel_detected[6];
-            8'h27: STATE_LED1 = channel_detected[7];
-            8'h28: STATE_LED1 = channel_detected[8];
-            8'h29: STATE_LED1 = channel_detected[9];
-            8'h2A: STATE_LED1 = channel_detected[10];
-            8'h2B: STATE_LED1 = channel_detected[11];
-            8'h30: STATE_LED1 = s_read_frame_start;
-            8'h31: STATE_LED1 = s_read_frame_reset;
-            8'h32: STATE_LED1 = s_read_axis_tvalid;
-            8'h33: STATE_LED1 = s_read_axis_tlast;
-            8'h34: STATE_LED1 = s_read_axis_tready;
-            8'h40: STATE_LED1 = s_IRST;
-            8'h41: STATE_LED1 = s_SHR;
-            8'h42: STATE_LED1 = s_SHS;
-            8'h43: STATE_LED1 = s_LPF1;
-            8'h44: STATE_LED1 = s_LPF2;
-            8'h45: STATE_LED1 = s_TDEF;
-            8'h46: STATE_LED1 = s_GATE_ON;
-            8'h47: STATE_LED1 = s_DF_SM0;
-            8'h48: STATE_LED1 = s_DF_SM1;
-            8'h49: STATE_LED1 = s_DF_SM2;
-            8'h4A: STATE_LED1 = s_DF_SM3;
-            8'h4B: STATE_LED1 = s_DF_SM4;
-            8'h4C: STATE_LED1 = s_DF_SM5;
-            8'h4D: STATE_LED1 = s_roic_sdio[0];
-            8'h4E: STATE_LED1 = s_sum_channel_detected;
-            8'h4F: STATE_LED1 = gen_sync_start;
-            8'h50: STATE_LED1 = s_aed_trig;
-            8'h51: STATE_LED1 = exit_signal_i;
-            8'h52: STATE_LED1 = panel_stable_o;
-            8'h53: STATE_LED1 = s_exp_read_exist;
-            8'h54: STATE_LED1 = s_get_dark_hi;
-            8'h55: STATE_LED1 = s_exit_signal_dark;
-            8'h56: STATE_LED1 = s_get_bright_hi;
-            8'h57: STATE_LED1 = s_exit_signal_bright;
-            8'h58: STATE_LED1 = s_get_aed_trig_hi;
-            8'h59: STATE_LED1 = s_exit_signal_aed;
-            8'h5A: STATE_LED1 = sequence_done_o;
-            8'h5B: STATE_LED1 = s_sequence_done_hi;
-            8'h60: STATE_LED1 = s_tg_stv;
-            8'h61: STATE_LED1 = s_mask_stv;
-            8'h62: STATE_LED1 = s_back_bias;
-            8'h63: STATE_LED1 = s_roic_sync_in;
-            8'h64: STATE_LED1 = ti_roic_sync;
-            8'h65: STATE_LED1 = s_readout_wait;
-            8'h66: STATE_LED1 = s_valid_readout;
-            8'h67: STATE_LED1 = stv_mask_o;
-            8'h68: STATE_LED1 = csi_mask_o;
-            8'h69: STATE_LED1 = s_clk_5mhz;
-            8'h6A: STATE_LED1 = s_clk_1mhz;
-            8'h6B: STATE_LED1 = s_aed_mode_exist;
-            8'h6C: STATE_LED1 = s_aed_trig_i;
-            8'h6D: STATE_LED1 = s_get_bright;
-            8'h6E: STATE_LED1 = aed_ready_done;
-            8'h6F: STATE_LED1 = s_state_exit_flag;
-            default: STATE_LED1 = 1'b0;
-        endcase
-    end
-
-    // for debug purpose
-    assign dbg_channel_detected = channel_detected[0];
-    assign dbg_roic_1st_channel = detected_data_out[0][7];
-    assign dbg_roic_even_odd = detected_data_out[0][6];
-    assign dbg_even_odd_toggle_out = s_IRST;
-
-    assign DEBUG_SiG = {dbg_even_odd_toggle_out, dbg_roic_even_odd, dbg_channel_detected, dbg_roic_1st_channel};
-
+    /////////////////////////////////////////////////////////////////////////////
+    // Week 6: Debug Integration Module (M6-1)
+    /////////////////////////////////////////////////////////////////////////////
+    // Debug and LED integration - handles LED state indication and debug signals
+    
+    debug_integration debug_integration_inst (
+        // Clock and reset
+        .clk_20mhz              (s_clk_20mhz),
+        .rst_n_20mhz            (rst_n_20mhz),
+        
+        // LED select control
+        .state_led_ctr          (s_state_led_ctr),
+        
+        // FSM state inputs
+        .FSM_idle_index         (FSM_idle_index),
+        .FSM_read_index         (FSM_read_index),
+        .FSM_exp_index          (FSM_exp_index),
+        .FSM_aed_read_index     (FSM_aed_read_index),
+        .FSM_flush_index        (s_sync_fsm_flush_index),
+        .FSM_back_bias_index    (s_sync_fsm_back_bias_index),
+        .FSM_wait_index         (FSM_wait_index),
+        .FSM_rst_index          (FSM_rst_index),
+        
+        // Validity signals
+        .valid_roic_data        (valid_roic_data),
+        .valid_read_mem         (valid_read_mem),
+        .valid_readout          (s_valid_readout),
+        
+        // ROIC channel detection
+        .channel_detected       (channel_detected),
+        
+        // AXI-Stream interface status
+        .read_frame_start       (s_read_frame_start),
+        .read_frame_reset       (s_read_frame_reset),
+        .read_axis_tvalid       (s_read_axis_tvalid),
+        .read_axis_tlast        (s_read_axis_tlast),
+        .read_axis_tready       (s_read_axis_tready),
+        
+        // TI ROIC timing signals
+        .sig_irst               (s_IRST),
+        .sig_shr                (s_SHR),
+        .sig_shs                (s_SHS),
+        .sig_lpf1               (s_LPF1),
+        .sig_lpf2               (s_LPF2),
+        .sig_tdef               (s_TDEF),
+        .sig_gate_on            (s_GATE_ON),
+        .sig_df_sm0             (s_DF_SM0),
+        .sig_df_sm1             (s_DF_SM1),
+        .sig_df_sm2             (s_DF_SM2),
+        .sig_df_sm3             (s_DF_SM3),
+        .sig_df_sm4             (s_DF_SM4),
+        .sig_df_sm5             (s_DF_SM5),
+        
+        // ROIC control signals
+        .roic_sdio_bit0         (s_roic_sdio[0]),
+        .sum_channel_detected   (s_sum_channel_detected),
+        .gen_sync_start         (gen_sync_start),
+        .roic_sync_in           (s_roic_sync_in),
+        .ti_roic_sync           (ti_roic_sync),
+        
+        // Acquisition and exposure signals
+        .aed_trig               (s_aed_trig),
+        .aed_trig_i             (s_aed_trig_i),
+        .aed_mode_exist         (s_aed_mode_exist),
+        .exit_signal            (exit_signal_i),
+        .panel_stable           (panel_stable_o),
+        .exp_read_exist         (s_exp_read_exist),
+        .get_dark_hi            (s_get_dark_hi),
+        .exit_signal_dark       (s_exit_signal_dark),
+        .get_bright_hi          (s_get_bright_hi),
+        .exit_signal_bright     (s_exit_signal_bright),
+        .get_aed_trig_hi        (s_get_aed_trig_hi),
+        .exit_signal_aed        (s_exit_signal_aed),
+        .get_bright             (s_get_bright),
+        
+        // Sequencer status signals
+        .sequence_done          (sequence_done_o),
+        .sequence_done_hi       (s_sequence_done_hi),
+        .state_exit_flag        (s_state_exit_flag),
+        .readout_wait           (s_readout_wait),
+        
+        // Timing and mask signals
+        .tg_stv                 (s_tg_stv),
+        .mask_stv               (s_mask_stv),
+        .back_bias              (s_back_bias),
+        .stv_mask               (stv_mask_o),
+        .csi_mask               (csi_mask_o),
+        
+        // Clock indicators
+        .clk_5mhz               (s_clk_5mhz),
+        .clk_1mhz               (s_clk_1mhz),
+        
+        // Ready status
+        .aed_ready_done         (aed_ready_done),
+        
+        // Test counter
+        .test_cnt               (s_test_cnt),
+        
+        // Debug data inputs
+        .dbg_roic_1st_channel   (detected_data_out[0][7]),
+        .dbg_roic_even_odd      (detected_data_out[0][6]),
+        
+        // Outputs
+        .STATE_LED1             (STATE_LED1),
+        .DEBUG_SIG              (DEBUG_SiG)
+    );
 
 endmodule

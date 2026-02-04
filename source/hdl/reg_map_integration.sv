@@ -146,7 +146,6 @@ module reg_map_integration (
     // Assign internal data to outputs
     assign s_reg_data = s_reg_data_internal;
     assign reg_data_index = s_reg_data_index_internal;
-    assign s_read_data_en = s_read_data_en;
 
     // SPI slave instantiation
     spi_slave #(

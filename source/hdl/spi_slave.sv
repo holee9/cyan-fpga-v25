@@ -1,4 +1,6 @@
 `timescale 1ns / 1ps
+// Week 10 Fix: Reset polarity changed from active-HIGH (posedge reset) to
+// active-LOW (negedge reset_n) for consistency with project reset convention
 
 module spi_slave
 		#(
@@ -9,7 +11,7 @@ module spi_slave
 		)
 		(
             input logic clk,                		// system clock
-		    input logic reset,              		// system reset
+		    input logic reset_n,              		// system reset (active-LOW)
 		  	// SPI I/O
 			input logic SCLK,
 			input logic SSB,
@@ -57,9 +59,9 @@ module spi_slave
 
     assign s_ssb = SSB;
 
-	always_ff @ (posedge clk or posedge reset)
+	always_ff @ (posedge clk or negedge reset_n)
 		begin
-			if (reset)
+			if (!reset_n)
 				begin
 					dly_sclk 	<= 3'b000;
 					dly_ss   	<= 3'b111;
@@ -113,9 +115,9 @@ module spi_slave
 
 	assign mosi_d = dly_mosi[9];
 
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset)
+		if (!reset_n)
 			bitcnt <= 0;
 		else if (spi_start)
 			bitcnt <= 0;
@@ -125,9 +127,9 @@ module spi_slave
 	end
 
 	// Capture 1st bit from host.  If flag_wr==1, a write from host to slave.
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset)
+		if (!reset_n)
 			flag_wr <= 1'b0;
 		else if (spi_start || spi_end)
 			flag_wr <= 1'b0;
@@ -138,9 +140,9 @@ module spi_slave
 	end
 
 	// // Capture 1st bit from host.  If flag_wr==1, a write from host to slave.
-	// always_ff @(posedge clk, posedge reset)
+	// always_ff @(posedge clk, negedge reset_n)
 	// begin
-	// 	if (reset)
+	// 	if (!reset_n)
 	// 		flag_rd <= 1'b0;
 	// 	else if (spi_start || spi_end)
 	// 		flag_rd <= 1'b0;
@@ -150,9 +152,9 @@ module spi_slave
 	// end
 
 	// Capture 1st bit from host.  If flag_rd==1, a write from slave to host.
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset)
+		if (!reset_n)
 			flag_rd <= 1'b0;
 		else if (spi_start || spi_end)
 			flag_rd <= 1'b0;
@@ -161,9 +163,9 @@ module spi_slave
 	end
 
 	// capture next addrsz bits for register address
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset )
+		if (!reset_n)
 			s_reg_addr <= 0;
 		else if (spi_start)
 			s_reg_addr <= 0;
@@ -175,9 +177,9 @@ module spi_slave
 	assign reg_addr = (s_addr_valid==1'b1) ? s_reg_addr : 0;
 
 	// capture next payload bits for register data
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset)
+		if (!reset_n)
 			wr_data <= 0;
 		else if (spi_start)
 			wr_data <= 0;
@@ -186,9 +188,9 @@ module spi_slave
 	end
 
 	// next payload bits to host data
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset)
+		if (!reset_n)
 			begin
 				s_miso <= 0;
 			end
@@ -210,9 +212,9 @@ module spi_slave
 	assign MISO = miso_d;
 
 	// address data valid
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset )
+		if (!reset_n)
 			s_addr_valid <= 1'b0;
 		else if (spi_start || spi_end)
 			s_addr_valid <= 1'b0;
@@ -221,9 +223,9 @@ module spi_slave
 	end
 	assign addr_valid = s_addr_valid;
 
-	always_ff @(posedge clk, posedge reset)
+	always_ff @(posedge clk, negedge reset_n)
 	begin
-		if (reset )
+		if (!reset_n)
 			wr_data_valid <= 1'b0;
 		else if (spi_start || spi_end)
 			wr_data_valid <= 1'b0;
