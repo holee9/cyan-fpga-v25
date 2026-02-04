@@ -1,8 +1,8 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
-| Tool Version : Vivado v.2024.2.2 (win64) Build 6060944 Thu Mar 06 19:10:01 MST 2025
-| Date         : Mon Dec 22 18:37:22 2025
-| Host         : WS-DRAKE running 64-bit major release  (build 9200)
+| Tool Version : Vivado v.2025.2 (win64) Build 6299465 Fri Nov 14 19:35:11 GMT 2025
+| Date         : Wed Feb  4 16:00:25 2026
+| Host         : work-dev running 64-bit major release  (build 9200)
 | Command      : report_incremental_reuse -file cyan_top_incremental_reuse_routed.rpt
 | Design       : cyan_top
 | Device       : xc7a35t
@@ -34,7 +34,7 @@ Table of Contents
 | Synthesis Flow        |          Default |
 | Auto Incremental      |              Yes |
 | Incremental Directive | RuntimeOptimized |
-| Target WNS            |           -0.152 |
+| Target WNS            |              0.0 |
 | QoR Suggestions       |                0 |
 +-----------------------+------------------+
 
@@ -45,9 +45,9 @@ Table of Contents
 +-------+------------------------------+------------------------------------+----------------------------+--------------------+--------+
 |  Type | Matched % (of Initial Total) | Initial Reuse % (of Initial Total) | Current Reuse % (of Total) | Fixed % (of Total) |  Total |
 +-------+------------------------------+------------------------------------+----------------------------+--------------------+--------+
-| Cells |                       100.00 |                             100.00 |                     100.00 |               0.28 |  41551 |
-| Nets  |                       100.00 |                              99.93 |                      99.77 |               0.00 |  32357 |
-| Pins  |                            - |                              99.99 |                      99.49 |                  - | 165384 |
+| Cells |                       100.00 |                             100.00 |                     100.00 |               0.40 |  29094 |
+| Nets  |                       100.00 |                             100.00 |                     100.00 |               0.00 |  20515 |
+| Pins  |                            - |                             100.00 |                     100.00 |                  - | 110512 |
 | Ports |                       100.00 |                             100.00 |                     100.00 |             100.00 |    154 |
 +-------+------------------------------+------------------------------------+----------------------------+--------------------+--------+
 
@@ -55,18 +55,18 @@ Table of Contents
 3. Reference Checkpoint Information
 -----------------------------------
 
-+----------------+----------------------------------------------------------------------------------------------------+
-| DCP Location:  | D:/git_workspace/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp |
-+----------------+----------------------------------------------------------------------------------------------------+
++----------------+------------------------------------------------------------------------------------------------------------------+
+| DCP Location:  | D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp |
++----------------+------------------------------------------------------------------------------------------------------------------+
 
 
 +--------------------------------+----------------------------+
 |         DCP Information        |            Value           |
 +--------------------------------+----------------------------+
-| Vivado Version                 |                   2024.2.2 |
+| Vivado Version                 |                     2025.2 |
 | DCP State                      |                 POST_ROUTE |
-| Recorded WNS                   |                     -0.152 |
-| Recorded WHS                   |                      0.029 |
+| Recorded WNS                   |                      0.543 |
+| Recorded WHS                   |                      0.030 |
 | Reference Speed File Version   | PRODUCTION 1.23 2018-06-13 |
 | Incremental Speed File Version | PRODUCTION 1.23 2018-06-13 |
 +--------------------------------+----------------------------+
@@ -81,12 +81,12 @@ Table of Contents
 +-----------------+-------------+-------------+-------------+-------------+-------------+-------------+
 |      Stage      |  Reference  | Incremental |  Reference  | Incremental |  Reference  | Incremental |
 +-----------------+-------------+-------------+-------------+-------------+-------------+-------------+
-| synth_design    |             |             |       00:02 |       00:02 |       00:02 |       00:02 |
+| synth_design    |             |             |       00:01 |       00:01 |       00:01 |       00:01 |
 | opt_design      |             |             |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
-| read_checkpoint |             |             |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
-| place_design    |      -0.166 |      -0.150 |       00:01 |     < 1 min |       00:02 |       00:01 |
-| phys_opt_design |      -0.166 |      -0.150 |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
-| route_design    |      -0.151 |      -0.151 |       00:01 |       00:01 |       00:02 |       00:01 |
+| read_checkpoint |             |             |             |     < 1 min |             |     < 1 min |
+| place_design    |       0.516 |       0.543 |     < 1 min |     < 1 min |       00:01 |     < 1 min |
+| phys_opt_design |       0.516 |       0.543 |     < 1 min |     < 1 min |     < 1 min |     < 1 min |
+| route_design    |       0.543 |       0.543 |     < 1 min |     < 1 min |       00:01 |     < 1 min |
 +-----------------+-------------+-------------+-------------+-------------+-------------+-------------+
 
 
@@ -99,33 +99,14 @@ Table of Contents
 +-------------------------+--------+------------+
 | iphys_opt_design replay | Reused | Not Reused |
 +-------------------------+--------+------------+
-| fanout_opt              |      3 |          0 |
-| restruct_opt            |     21 |          0 |
-+-------------------------+--------+------------+
 
 
 5.2 QoR Suggestion Optimizations
 --------------------------------
 
-+-------------------------------------+-------+
-|           QoR Suggestions           | Value |
-+-------------------------------------+-------+
-| QoR Suggestions (Recommended)       |     0 |
-|   Suggestions Included In Reference |     0 |
-|     Yet to apply                    |     0 |
-|     Applied                         |     0 |
-|     Failed to apply                 |     0 |
-|   New Suggestions (INCR_FRIENDLY=1) |     0 |
-|     Yet to apply                    |     0 |
-|     Applied                         |     0 |
-|     Failed to apply                 |     0 |
-| QoR Suggestions (Not Recommended)   |     0 |
-|   New Suggestions (INCR_FRIENDLY=0) |     0 |
-|     Yet to apply                    |     0 |
-|     Applied                         |     0 |
-|     Failed to apply                 |     0 |
-| Disabled New Suggestions            |     0 |
-+-------------------------------------+-------+
++-----------------+-------+
+| QoR Suggestions | Value |
++-----------------+-------+
 
 
 6. Command Comparison with Reference Run
@@ -135,7 +116,6 @@ Table of Contents
 --------------
 synth_design-define default::[not_specified] -verilog_define default::[not_specified] -vhdl_define default::[not_specified] -top  cyan_top -part  xc7a35tfgg484-1 
 opt_design
-read_checkpoint -directive RuntimeOptimized  -incremental -auto_incremental D:/git_workspace/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp
 place_design
 phys_opt_design
 route_design
@@ -144,7 +124,7 @@ route_design
 ----------------
 synth_design-define default::[not_specified] -verilog_define default::[not_specified] -vhdl_define default::[not_specified] -top  cyan_top -part  xc7a35tfgg484-1 
 opt_design
-read_checkpoint -directive RuntimeOptimized  -incremental -auto_incremental D:/git_workspace/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp
+read_checkpoint -directive RuntimeOptimized  -incremental -auto_incremental D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_top.srcs/utils_1/imports/impl_1/cyan_top_routed.dcp
 place_design
 phys_opt_design
 route_design
@@ -157,7 +137,7 @@ route_design
 +-----------------------+------+
 | Non-Reused Cells      | 0.00 |
 | Partially reused nets | 0.00 |
-| Non-Reused nets       | 0.22 |
+| Non-Reused nets       | 0.00 |
 | Non-Reused Ports      | 0.00 |
 +-----------------------+------+
 

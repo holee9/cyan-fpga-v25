@@ -7,13 +7,14 @@
 #==============================================================================
 # Vivado Build Outputs (INTERMEDIATE - EXCLUDED)
 #==============================================================================
-build/
-*.runs/
-*.ip_user_files/
-*.cache/
-*.sim/
-*.hw/
-*.Xil/
+# Keep: build/*.xpr, build/*.tcl (tracked)
+# Exclude only subdirectories
+build/*.runs/
+build/*.ip_user_files/
+build/*.cache/
+build/*.sim/
+build/*.hw/
+build/*.Xil/
 
 #==============================================================================
 # Vivado Generated Files (EXCLUDED)
@@ -23,7 +24,7 @@ build/
 *.str
 *.vdi
 *.vds
-*.xpr
+# Note: *.xpr files in build/ are tracked
 
 #==============================================================================
 # IP Core Generated Files (EXCLUDED - Track only source wrapper)
@@ -36,6 +37,16 @@ source/ip/*/sim/
 *.bda
 *.bxml
 *.mem
+
+# Additional IP generated files
+*.dcp
+*.xml
+*.veo
+*.vho
+*_ooc.xdc
+*_sim_netlist.*
+*_stub.*
+*_sv.sveo
 
 #==============================================================================
 # Simulation Files - Partial Tracking
