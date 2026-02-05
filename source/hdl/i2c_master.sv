@@ -56,14 +56,13 @@ module i2c_master(
     reg [7:0] slave_address;  
     
     // I2C timing parameters (clock counts at 25MHz input)
-    parameter SCL_HIGH_COUNT = 10,   // SCL high time count (400ns @ 25MHz)
-    parameter SCL_LOW_COUNT = 20,    // SCL low time count (800ns @ 25MHz)
-    parameter BIT_COUNT_MAX = 7,     // Bit index for 8-bit data (0-7)
-
+    parameter SCL_HIGH_COUNT = 10;   // SCL high time count (400ns @ 25MHz)
+    parameter SCL_LOW_COUNT = 20;    // SCL low time count (800ns @ 25MHz)
+    parameter BIT_COUNT_MAX = 7;     // Bit index for 8-bit data (0-7)
     parameter SLAVE_ADDR = 8'hE8;
-    parameter IDLE = 0, START = 1, WRITE_ADDR = 2, WRITE_DATA = 3,WRITE_DATA2 = 8,
-              READ_DATA = 4, STOP = 5, ACK = 6, DELAY = 7;
-    parameter DELAY_2MS = 100;     
+    parameter IDLE = 0, START = 1, WRITE_ADDR = 2, WRITE_DATA = 3, WRITE_DATA2 = 8,
+              READ_DATA = 4, STOP = 5, ACK = 6, DELAY = 7,
+              DELAY_2MS = 100;     
 
     
     assign sda = sda_dir ? sda_out : 1'bz;     

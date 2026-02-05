@@ -217,10 +217,6 @@ module timing_generator (
         end
     end
 
-    // HSYNC counter control
-    assign inc_hsync_cnt = !sig_hsync_1d && sig_hsync_2d;
-    assign rst_hsync_cnt = (inc_hsync_cnt && hsync_cnt == (dsp_image_height[11:0] - 12'h1)) ? 1'b1 : 1'b0;
-
     // Delayed HSYNC signals
     logic sig_hsync_1d, sig_hsync_2d;
     always_ff @(posedge eim_clk or posedge eim_rst) begin
@@ -232,6 +228,10 @@ module timing_generator (
             sig_hsync_2d <= sig_hsync_1d;
         end
     end
+
+    // HSYNC counter control
+    assign inc_hsync_cnt = !sig_hsync_1d && sig_hsync_2d;
+    assign rst_hsync_cnt = (inc_hsync_cnt && hsync_cnt == (dsp_image_height[11:0] - 12'h1)) ? 1'b1 : 1'b0;
 
     // HSYNC counter
     always_ff @(posedge eim_clk or posedge eim_rst) begin

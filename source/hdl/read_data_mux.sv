@@ -68,6 +68,22 @@ module read_data_mux (
     assign s_max_v_count = max_v_count;
 
     //==========================================================================
+    // Internal Signals - Timing Generator Outputs
+    //==========================================================================
+    logic        sig_hsync_int;
+    logic        sig_vsync_int;
+    logic        hi_vsync_int;
+    logic        lo_hsync_int;
+    logic        lo_vsync_int;
+    logic        s_h_sync;
+    logic        s_v_sync;
+    logic        s_axis_tlast_int;
+    logic        s_tuser_0_int;
+    logic        read_frame_reset_int;
+    logic        read_frame_start_int;
+    logic [11:0] hsync_cnt_int;
+
+    //==========================================================================
     // Internal Signals - Reset
     //==========================================================================
     logic        tx_eim_rst_n;
@@ -76,18 +92,6 @@ module read_data_mux (
     logic        rst_hsync_cnt_dly;
 
     assign internal_reset = rst_hsync_cnt_dly || hi_vsync_int || !tx_sys_rst_n;
-
-    //==========================================================================
-    // Internal Signals - Timing Generator Outputs
-    //==========================================================================
-    logic        sig_hsync_int;
-    logic        sig_vsync_int;
-    logic        hi_vsync_int;
-    logic        s_axis_tlast_int;
-    logic        s_tuser_0_int;
-    logic        read_frame_reset_int;
-    logic        read_frame_start_int;
-    logic [11:0] hsync_cnt_int;
 
     //==========================================================================
     // Internal Signals - AXI-Stream
@@ -412,10 +416,6 @@ module read_data_mux (
     // Additional timing signals needed by timing_generator
     logic        sig_hsync_1d;
     logic        sig_hsync_2d;
-    logic        lo_hsync_int;
-    logic        lo_vsync_int;
-    logic        s_h_sync;
-    logic        s_v_sync;
     logic [15:0] s_tuser_0_dly;
     logic        s_tuser_0;
 
@@ -496,7 +496,6 @@ module read_data_mux (
     logic [3:0]  vsync_keep_hi_cnt;
     logic        up_vsync_keep_hi;
     logic        down_vsync_keep_hi;
-    logic        lo_vsync_int;
     logic        inc_hsync_cnt;
     logic        rst_hsync_cnt;
 

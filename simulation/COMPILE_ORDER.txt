@@ -1,0 +1,88 @@
+# CYAN-FPGA xdaq_top - Simulation Compile Order
+# Date: 2026-02-05
+#
+# This file defines the correct compilation order for all source files
+# and testbenches to avoid dependency issues.
+
+# =============================================================================
+# Phase 1: Basic/CDC Modules (No dependencies)
+# =============================================================================
+cdc_sync_3ff.sv
+reset_sync.sv
+async_fifo.sv
+async_fifo_1b.sv
+fifo_1b.sv
+
+# =============================================================================
+# Phase 2: Communication Modules (Depend on Phase 1)
+# =============================================================================
+spi_slave.sv
+i2c_master.sv
+rf_spi_controller.sv
+
+# =============================================================================
+# Phase 3: Clock/Timing Modules (Depend on Phase 1)
+# =============================================================================
+dcdc_clk.sv
+clock_gen_top.sv
+
+# =============================================================================
+# Phase 4: Parameter/Include Files
+# =============================================================================
+p_define_refacto.sv
+
+# =============================================================================
+# Phase 5: Core Modules (Depend on Phases 1-4)
+# =============================================================================
+init_refacto.sv
+init.sv
+sequencer_fsm.sv
+read_data_mux.sv
+
+# =============================================================================
+# Phase 6: Extracted Modules Phase 8 (Depend on Phases 1-5)
+# =============================================================================
+mipi_interface_wrapper.sv
+async_fifo_controller.sv
+timing_generator.sv
+data_path_selector.sv
+state_led_controller.sv
+
+# =============================================================================
+# Phase 7: Integration Modules (Depend on Phases 1-6)
+# =============================================================================
+debug_integration.sv
+reg_map_integration.sv
+cyan_top.sv
+
+# =============================================================================
+# Testbenches - Execution Order
+# =============================================================================
+
+# Basic/CDC Tests (No DUT dependencies)
+simulation/tb_src/basic/reset_sync_tb.sv
+simulation/tb_src/basic/cdc_gen_sync_tb.sv
+simulation/tb_src/basic/async_fifo_param_tb.sv
+
+# Unit Tests - Low Level
+simulation/tb_src/unit/init_tb.sv
+simulation/tb_src/unit/state_led_controller_tb.sv
+simulation/tb_src/unit/clock_gen_top_tb.sv
+simulation/tb_src/unit/rf_spi_controller_tb.sv
+simulation/tb_src/unit/i2c_master_tb.sv
+
+# Unit Tests - Data Path
+simulation/tb_src/unit/data_path_selector_tb.sv
+simulation/tb_src/unit/async_fifo_controller_tb.sv
+simulation/tb_src/unit/timing_generator_tb.sv
+simulation/tb_src/unit/mipi_interface_wrapper_tb.sv
+simulation/tb_src/unit/debug_integration_tb.sv
+
+# Unit Tests - High Level (depend on low level)
+simulation/tb_src/unit/read_data_mux_tb.sv
+simulation/tb_src/unit/sequencer_fsm_tb.sv
+simulation/tb_src/unit/tb_reg_map.sv
+simulation/tb_src/unit/tb_roic_gate_drv_compare.sv
+
+# Integration Tests (depend on all modules)
+simulation/tb_src/integration/cyan_top_tb.sv
