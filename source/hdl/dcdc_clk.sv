@@ -1,3 +1,20 @@
+///////////////////////////////////////////////////////////////////////////////
+// File: dcdc_clk.sv
+// Date: 2026.02.03
+// Designer: drake.lee
+// Description: DC-DC Clock Generator Module
+//              Generates 1MHz and 5MHz clock signals from system clock
+//              Used for DC-DC converter PWM control and bias voltage sequencing
+//
+// Features:
+//   - Dual output clock generation (1MHz and 5MHz)
+//   - Parameterized counter periods
+//   - Active-LOW reset synchronous to clock
+//
+// Revision History:
+//    2026.02.03 - Initial creation (Week 6 - M6-1)
+///////////////////////////////////////////////////////////////////////////////
+
 module dcdc_clk (
     input   logic   clk,
     input   logic   reset_n,

@@ -316,7 +316,7 @@ module cyan_top (
     logic aed_enable_o;
     logic stv_mask_o;
     logic csi_mask_o;
-    logic idle_elable_o;
+    logic idle_enable_o;
     logic iterate_exist_o;
     logic s_wait_sync;
     logic [2:0] s_wait_sync_dly;

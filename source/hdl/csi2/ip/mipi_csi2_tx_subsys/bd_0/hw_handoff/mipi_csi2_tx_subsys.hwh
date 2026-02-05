@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<EDKSYSTEM EDWVERSION="1.2" TIMESTAMP="Mon Feb  2 16:25:17 2026" VIVADOVERSION="2025.2">
+<EDKSYSTEM EDWVERSION="1.2" TIMESTAMP="Wed Feb  4 18:54:12 2026" VIVADOVERSION="2025.2">
 
   <SYSTEMINFO ARCH="artix7" DEVICE="7a35t" NAME="bd_26df" PACKAGE="fgg484" SPEEDGRADE="-1"/>
 
@@ -95,12 +95,12 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_arprot"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="O" LEFT="0" NAME="s_axi_arready" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_arready">
+    <PORT DIR="O" NAME="s_axi_arready" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_arready">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_arready"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="I" LEFT="0" NAME="s_axi_arvalid" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_arvalid">
+    <PORT DIR="I" NAME="s_axi_arvalid" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_arvalid">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_arvalid"/>
       </CONNECTIONS>
@@ -115,17 +115,17 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_awprot"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="O" LEFT="0" NAME="s_axi_awready" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_awready">
+    <PORT DIR="O" NAME="s_axi_awready" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_awready">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_awready"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="I" LEFT="0" NAME="s_axi_awvalid" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_awvalid">
+    <PORT DIR="I" NAME="s_axi_awvalid" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_awvalid">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_awvalid"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="I" LEFT="0" NAME="s_axi_bready" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_bready">
+    <PORT DIR="I" NAME="s_axi_bready" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_bready">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_bready"/>
       </CONNECTIONS>
@@ -135,7 +135,7 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_bresp"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="O" LEFT="0" NAME="s_axi_bvalid" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_bvalid">
+    <PORT DIR="O" NAME="s_axi_bvalid" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_bvalid">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_bvalid"/>
       </CONNECTIONS>
@@ -145,7 +145,7 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_rdata"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="I" LEFT="0" NAME="s_axi_rready" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_rready">
+    <PORT DIR="I" NAME="s_axi_rready" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_rready">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_rready"/>
       </CONNECTIONS>
@@ -155,7 +155,7 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_rresp"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="O" LEFT="0" NAME="s_axi_rvalid" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_rvalid">
+    <PORT DIR="O" NAME="s_axi_rvalid" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_rvalid">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_rvalid"/>
       </CONNECTIONS>
@@ -165,7 +165,7 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_wdata"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="O" LEFT="0" NAME="s_axi_wready" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_wready">
+    <PORT DIR="O" NAME="s_axi_wready" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_wready">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_wready"/>
       </CONNECTIONS>
@@ -175,7 +175,7 @@
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_wstrb"/>
       </CONNECTIONS>
     </PORT>
-    <PORT DIR="I" LEFT="0" NAME="s_axi_wvalid" RIGHT="0" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_wvalid">
+    <PORT DIR="I" NAME="s_axi_wvalid" SIGIS="undef" SIGNAME="axi_crossbar_0_S00_AXI_wvalid">
       <CONNECTIONS>
         <CONNECTION INSTANCE="axi_crossbar_0" PORT="S00_AXI_wvalid"/>
       </CONNECTIONS>

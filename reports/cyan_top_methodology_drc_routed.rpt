@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 --------------------------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2025.2 (win64) Build 6299465 Fri Nov 14 19:35:11 GMT 2025
-| Date         : Wed Feb  4 16:57:57 2026
+| Date         : Thu Feb  5 09:51:50 2026
 | Host         : work-dev running 64-bit major release  (build 9200)
 | Command      : report_methodology -file cyan_top_methodology_drc_routed.rpt -pb cyan_top_methodology_drc_routed.pb -rpx cyan_top_methodology_drc_routed.rpx
 | Design       : cyan_top
@@ -2688,12 +2688,12 @@ Related violations: <none>
 
 PDRC-190#1 Warning
 Suboptimally placed synchronized register chain  
-The FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_csi2_tx_ctrl_0/inst/sync_blk/u_ulps_exit_core_clk/syncstages_ff_reg[1] in site SLICE_X32Y28 is part of a synchronized register chain that is suboptimally placed as the load FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_dphy_0/inst/inst/bd_26df_mipi_dphy_0_0_tx_support_i/master_tx.dphy_tx_fab_top/gen_tx_clk_lane_7series.u_tx_clk_lane_7series/cl_txulpsexit_sync_i/s_level_out_d1_cdc_to_reg is not placed in the same (SLICE) site.
+The FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_csi2_tx_ctrl_0/inst/sync_blk/u_ulps_exit_core_clk/syncstages_ff_reg[1] in site SLICE_X34Y41 is part of a synchronized register chain that is suboptimally placed as the load FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_dphy_0/inst/inst/bd_26df_mipi_dphy_0_0_tx_support_i/master_tx.dphy_tx_fab_top/gen_tx_clk_lane_7series.u_tx_clk_lane_7series/cl_txulpsexit_sync_i/s_level_out_d1_cdc_to_reg is not placed in the same (SLICE) site.
 Related violations: <none>
 
 PDRC-190#2 Warning
 Suboptimally placed synchronized register chain  
-The FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_csi2_tx_ctrl_0/inst/sync_blk/u_ulps_start_en_core_clk/syncstages_ff_reg[1] in site SLICE_X32Y30 is part of a synchronized register chain that is suboptimally placed as the load FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_dphy_0/inst/inst/bd_26df_mipi_dphy_0_0_tx_support_i/master_tx.dphy_tx_fab_top/gen_tx_clk_lane_7series.u_tx_clk_lane_7series/cl_txulpsclk_sync_i/s_level_out_d1_cdc_to_reg is not placed in the same (SLICE) site.
+The FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_csi2_tx_ctrl_0/inst/sync_blk/u_ulps_start_en_core_clk/syncstages_ff_reg[1] in site SLICE_X33Y42 is part of a synchronized register chain that is suboptimally placed as the load FDRE cell mipi_integration_inst/inst_mipi_csi2_tx/inst_mipi_csi2_tx/inst_mipi_csi2_tx_subsyst/inst/mipi_dphy_0/inst/inst/bd_26df_mipi_dphy_0_0_tx_support_i/master_tx.dphy_tx_fab_top/gen_tx_clk_lane_7series.u_tx_clk_lane_7series/cl_txulpsclk_sync_i/s_level_out_d1_cdc_to_reg is not placed in the same (SLICE) site.
 Related violations: <none>
 
 TIMING-9#1 Warning
@@ -2819,13 +2819,13 @@ Related violations: <none>
 XDCB-5#1 Warning
 Runtime inefficient way to find pin objects  
 The option '-through : [get_pins -hierarchical -filter {NAME =~ *fifo*gray*sync*}]' of constraint 'set_false_path' uses inefficient query to find pin objects (see constraint position '8' in the Timing Constraint window in Vivado IDE). To reduce runtime, it is recommended to get the pins through the cell objects. Please refer to Using Constraints Guide (Constraints Efficiency). An example of optimal query is: get_pins -filter {REF_PIN_NAME=~yy*} -of_objects [get_cells -hierarchical xx*].
-Current XDC: D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/source/constrs/timing.xdc (Line: 46)
+Current XDC: D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/source/constrs/timing.xdc (Line: 43)
 Related violations: <none>
 
 XDCB-5#2 Warning
 Runtime inefficient way to find pin objects  
 The option '-to : [get_pins -hierarchical -filter {NAME =~ *fifo*gray*sync*}]' of constraint 'set_false_path' uses inefficient query to find pin objects (see constraint position '8' in the Timing Constraint window in Vivado IDE). To reduce runtime, it is recommended to get the pins through the cell objects. Please refer to Using Constraints Guide (Constraints Efficiency). An example of optimal query is: get_pins -filter {REF_PIN_NAME=~yy*} -of_objects [get_cells -hierarchical xx*].
-Current XDC: D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/source/constrs/timing.xdc (Line: 46)
+Current XDC: D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/source/constrs/timing.xdc (Line: 43)
 Related violations: <none>
 
 

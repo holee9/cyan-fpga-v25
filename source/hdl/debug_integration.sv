@@ -7,6 +7,7 @@
 // Description: Debug and LED integration module - Extracted from cyan_top.sv
 // Revision History:
 //    2026.02.03 - Initial extraction from cyan_top.sv (Week 6 - M6-1)
+//    2026.02.04 - Integrated state_led_controller (Phase 8)
 ///////////////////////////////////////////////////////////////////////////////
 
 module debug_integration (
@@ -80,85 +81,116 @@ module debug_integration (
     output logic [3:0] DEBUG_SIG
 );
 
+    //==========================================================================
+    // Week 12: state_led_controller Integration (Phase 8 - M8-3)
+    //==========================================================================
+    // Extract LED control logic to dedicated module
+
+    logic state_led_out;
+
+    state_led_controller state_led_ctrl_inst (
+        .clk_20mhz              (clk_20mhz),
+        .rst_n                  (rst_n_20mhz),
+
+        // LED select control
+        .state_led_ctr          (state_led_ctr),
+
+        // FSM state inputs
+        .FSM_idle_index         (FSM_idle_index),
+        .FSM_read_index         (FSM_read_index),
+        .FSM_exp_index          (FSM_exp_index),
+        .FSM_aed_read_index     (FSM_aed_read_index),
+        .FSM_flush_index        (FSM_flush_index),
+        .FSM_back_bias_index    (FSM_back_bias_index),
+        .FSM_wait_index         (FSM_wait_index),
+        .FSM_rst_index          (FSM_rst_index),
+
+        // Validity signals
+        .valid_roic_data        (valid_roic_data),
+        .valid_read_mem         (valid_read_mem),
+        .valid_readout          (valid_readout),
+
+        // ROIC channel detection
+        .channel_detected       (channel_detected),
+
+        // AXI-Stream status
+        .read_frame_start       (read_frame_start),
+        .read_frame_reset       (read_frame_reset),
+        .read_axis_tvalid       (read_axis_tvalid),
+        .read_axis_tlast        (read_axis_tlast),
+        .read_axis_tready       (read_axis_tready),
+
+        // Ready status
+        .aed_ready_done         (aed_ready_done),
+        .panel_stable           (panel_stable),
+        .gen_sync_start         (gen_sync_start),
+
+        // LED output
+        .STATE_LED1             (state_led_out)
+    );
+
+    // Override LED output when state_led_ctr < 0x70 (state_led_controller active)
+    // Otherwise use legacy direct mapping
     always_comb begin
-        case (state_led_ctr)
-            8'h00: STATE_LED1 = test_cnt[23];
-            8'h01: STATE_LED1 = FSM_idle_index;
-            8'h02: STATE_LED1 = FSM_read_index;
-            8'h03: STATE_LED1 = FSM_exp_index;
-            8'h04: STATE_LED1 = FSM_aed_read_index;
-            8'h05: STATE_LED1 = FSM_flush_index;
-            8'h06: STATE_LED1 = FSM_back_bias_index;
-            8'h07: STATE_LED1 = FSM_wait_index;
-            8'h08: STATE_LED1 = FSM_rst_index;
-            8'h09: STATE_LED1 = valid_roic_data;
-            8'h0A: STATE_LED1 = valid_read_mem;
-            8'h0B: STATE_LED1 = valid_readout;
-            8'h20: STATE_LED1 = channel_detected[0];
-            8'h21: STATE_LED1 = channel_detected[1];
-            8'h22: STATE_LED1 = channel_detected[2];
-            8'h23: STATE_LED1 = channel_detected[3];
-            8'h24: STATE_LED1 = channel_detected[4];
-            8'h25: STATE_LED1 = channel_detected[5];
-            8'h26: STATE_LED1 = channel_detected[6];
-            8'h27: STATE_LED1 = channel_detected[7];
-            8'h28: STATE_LED1 = channel_detected[8];
-            8'h29: STATE_LED1 = channel_detected[9];
-            8'h2A: STATE_LED1 = channel_detected[10];
-            8'h2B: STATE_LED1 = channel_detected[11];
-            8'h30: STATE_LED1 = read_frame_start;
-            8'h31: STATE_LED1 = read_frame_reset;
-            8'h32: STATE_LED1 = read_axis_tvalid;
-            8'h33: STATE_LED1 = read_axis_tlast;
-            8'h34: STATE_LED1 = read_axis_tready;
-            8'h40: STATE_LED1 = sig_irst;
-            8'h41: STATE_LED1 = sig_shr;
-            8'h42: STATE_LED1 = sig_shs;
-            8'h43: STATE_LED1 = sig_lpf1;
-            8'h44: STATE_LED1 = sig_lpf2;
-            8'h45: STATE_LED1 = sig_tdef;
-            8'h46: STATE_LED1 = sig_gate_on;
-            8'h47: STATE_LED1 = sig_df_sm0;
-            8'h48: STATE_LED1 = sig_df_sm1;
-            8'h49: STATE_LED1 = sig_df_sm2;
-            8'h4A: STATE_LED1 = sig_df_sm3;
-            8'h4B: STATE_LED1 = sig_df_sm4;
-            8'h4C: STATE_LED1 = sig_df_sm5;
-            8'h4D: STATE_LED1 = roic_sdio_bit0;
-            8'h4E: STATE_LED1 = sum_channel_detected;
-            8'h4F: STATE_LED1 = gen_sync_start;
-            8'h50: STATE_LED1 = aed_trig;
-            8'h51: STATE_LED1 = exit_signal;
-            8'h52: STATE_LED1 = panel_stable;
-            8'h53: STATE_LED1 = exp_read_exist;
-            8'h54: STATE_LED1 = get_dark_hi;
-            8'h55: STATE_LED1 = exit_signal_dark;
-            8'h56: STATE_LED1 = get_bright_hi;
-            8'h57: STATE_LED1 = exit_signal_bright;
-            8'h58: STATE_LED1 = get_aed_trig_hi;
-            8'h59: STATE_LED1 = exit_signal_aed;
-            8'h5A: STATE_LED1 = sequence_done;
-            8'h5B: STATE_LED1 = sequence_done_hi;
-            8'h60: STATE_LED1 = tg_stv;
-            8'h61: STATE_LED1 = mask_stv;
-            8'h62: STATE_LED1 = back_bias;
-            8'h63: STATE_LED1 = roic_sync_in;
-            8'h64: STATE_LED1 = ti_roic_sync;
-            8'h65: STATE_LED1 = readout_wait;
-            8'h66: STATE_LED1 = valid_readout;
-            8'h67: STATE_LED1 = stv_mask;
-            8'h68: STATE_LED1 = csi_mask;
-            8'h69: STATE_LED1 = clk_5mhz;
-            8'h6A: STATE_LED1 = clk_1mhz;
-            8'h6B: STATE_LED1 = aed_mode_exist;
-            8'h6C: STATE_LED1 = aed_trig_i;
-            8'h6D: STATE_LED1 = get_bright;
-            8'h6E: STATE_LED1 = aed_ready_done;
-            8'h6F: STATE_LED1 = state_exit_flag;
-            default: STATE_LED1 = 1'b0;
-        endcase
+        if (state_led_ctr < 8'h70) begin
+            STATE_LED1 = state_led_out;
+        end else begin
+            // Legacy direct mapping for modes 0x70+
+            case (state_led_ctr)
+                8'h70: STATE_LED1 = sig_irst;
+                8'h71: STATE_LED1 = sig_shr;
+                8'h72: STATE_LED1 = sig_shs;
+                8'h73: STATE_LED1 = sig_lpf1;
+                8'h74: STATE_LED1 = sig_lpf2;
+                8'h75: STATE_LED1 = sig_tdef;
+                8'h76: STATE_LED1 = sig_gate_on;
+                8'h77: STATE_LED1 = sig_df_sm0;
+                8'h78: STATE_LED1 = sig_df_sm1;
+                8'h79: STATE_LED1 = sig_df_sm2;
+                8'h7A: STATE_LED1 = sig_df_sm3;
+                8'h7B: STATE_LED1 = sig_df_sm4;
+                8'h7C: STATE_LED1 = sig_df_sm5;
+                8'h7D: STATE_LED1 = roic_sdio_bit0;
+                8'h7E: STATE_LED1 = sum_channel_detected;
+                8'h7F: STATE_LED1 = gen_sync_start;
+                8'h80: STATE_LED1 = aed_trig;
+                8'h81: STATE_LED1 = exit_signal;
+                8'h82: STATE_LED1 = panel_stable;
+                8'h83: STATE_LED1 = exp_read_exist;
+                8'h84: STATE_LED1 = get_dark_hi;
+                8'h85: STATE_LED1 = exit_signal_dark;
+                8'h86: STATE_LED1 = get_bright_hi;
+                8'h87: STATE_LED1 = exit_signal_bright;
+                8'h88: STATE_LED1 = get_aed_trig_hi;
+                8'h89: STATE_LED1 = exit_signal_aed;
+                8'h8A: STATE_LED1 = sequence_done;
+                8'h8B: STATE_LED1 = sequence_done_hi;
+                8'h8C: STATE_LED1 = tg_stv;
+                8'h8D: STATE_LED1 = mask_stv;
+                8'h8E: STATE_LED1 = back_bias;
+                8'h8F: STATE_LED1 = roic_sync_in;
+                8'h90: STATE_LED1 = ti_roic_sync;
+                8'h91: STATE_LED1 = readout_wait;
+                8'h92: STATE_LED1 = valid_readout;
+                8'h93: STATE_LED1 = stv_mask;
+                8'h94: STATE_LED1 = csi_mask;
+                8'h95: STATE_LED1 = clk_5mhz;
+                8'h96: STATE_LED1 = clk_1mhz;
+                8'h97: STATE_LED1 = aed_mode_exist;
+                8'h98: STATE_LED1 = aed_trig_i;
+                8'h99: STATE_LED1 = get_bright;
+                8'h9A: STATE_LED1 = aed_ready_done;
+                8'h9B: STATE_LED1 = state_exit_flag;
+                8'h9C: STATE_LED1 = test_cnt[23];  // Test counter mode
+                8'h9D: STATE_LED1 = channel_detected[0];
+                8'h9E: STATE_LED1 = channel_detected[1];
+                8'h9F: STATE_LED1 = channel_detected[2];
+                default: STATE_LED1 = 1'b0;
+            endcase
+        end
     end
 
+    // Debug signal generation
     logic dbg_even_odd_toggle_out;
     assign dbg_even_odd_toggle_out = sig_irst;
     assign DEBUG_SIG = {dbg_even_odd_toggle_out, dbg_roic_even_odd, channel_detected[0], dbg_roic_1st_channel};

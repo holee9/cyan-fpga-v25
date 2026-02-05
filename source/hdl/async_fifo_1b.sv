@@ -1,3 +1,37 @@
+//==============================================================================
+// FIFO_1B: Single-Clock Domain Asynchronous FIFO
+//==============================================================================
+// Description:
+//   A generic async FIFO with configurable data width and depth using Gray
+//   code pointer synchronization for CDC-safe cross-domain data transfer.
+//
+// Features:
+//   - Configurable data width (DATA_WIDTH parameter)
+//   - Configurable depth (must be power of two)
+//   - Gray code pointer synchronization for CDC safety
+//   - Full and empty flags
+//   - Registered output data
+//
+// Parameters:
+//   DATA_WIDTH: Bit width of data words (default: 8)
+//   DEPTH:      FIFO depth in entries, MUST be power of two (default: 16)
+//
+// Clock Domains:
+//   wr_clk: Write clock domain
+//   rd_clk: Read clock domain (asynchronous to wr_clk)
+//
+// Reset:
+//   Active-high asynchronous reset for each domain independently
+//
+// Usage:
+//   Use for CDC-safe data buffering between asynchronous clock domains.
+//   Common use case: bridging fast acquisition logic to slower processing.
+//
+// File: async_fifo_1b.sv
+// Author: FPGA Design Team
+// Date: 2026-02-04
+//==============================================================================
+
 module fifo_1b #(
     parameter int DATA_WIDTH = 8,
     parameter int DEPTH = 16   // MUST be a power of two

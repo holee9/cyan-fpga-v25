@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2025 Advanced Micro Devices, Inc. All Rights Reserved.
 -------------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version     : Vivado v.2025.2 (win64) Build 6299465 Fri Nov 14 19:35:11 GMT 2025
-| Date             : Wed Feb  4 16:58:05 2026
+| Date             : Thu Feb  5 09:52:00 2026
 | Host             : work-dev running 64-bit major release  (build 9200)
 | Command          : report_power -file cyan_top_power_routed.rpt -pb cyan_top_power_summary_routed.pb -rpx cyan_top_power_routed.rpx
 | Design           : cyan_top
@@ -30,14 +30,14 @@ Table of Contents
 ----------
 
 +--------------------------+--------------+
-| Total On-Chip Power (W)  | 0.478        |
+| Total On-Chip Power (W)  | 0.504        |
 | Design Power Budget (W)  | Unspecified* |
 | Power Budget Margin (W)  | NA           |
-| Dynamic (W)              | 0.405        |
+| Dynamic (W)              | 0.430        |
 | Device Static (W)        | 0.073        |
 | Effective TJA (C/W)      | 2.8          |
-| Max Ambient (C)          | 83.7         |
-| Junction Temperature (C) | 26.3         |
+| Max Ambient (C)          | 83.6         |
+| Junction Temperature (C) | 26.4         |
 | Confidence Level         | Low          |
 | Setting File             | ---          |
 | Simulation Activity File | ---          |
@@ -53,22 +53,22 @@ Table of Contents
 | On-Chip                  | Power (W) | Used     | Available | Utilization (%) |
 +--------------------------+-----------+----------+-----------+-----------------+
 | Clocks                   |     0.045 |       13 |       --- |             --- |
-| Slice Logic              |     0.003 |    29624 |       --- |             --- |
-|   LUT as Logic           |     0.003 |     9271 |     20800 |           44.57 |
-|   CARRY4                 |    <0.001 |      690 |      8150 |            8.47 |
-|   Register               |    <0.001 |    13934 |     41600 |           33.50 |
+| Slice Logic              |     0.003 |    29686 |       --- |             --- |
+|   LUT as Logic           |     0.003 |     9280 |     20800 |           44.62 |
+|   CARRY4                 |    <0.001 |      695 |      8150 |            8.53 |
+|   Register               |    <0.001 |    13953 |     41600 |           33.54 |
 |   BUFG                   |    <0.001 |       12 |        32 |           37.50 |
 |   LUT as Distributed RAM |    <0.001 |      772 |      9600 |            8.04 |
-|   Others                 |    <0.001 |      687 |       --- |             --- |
-|   F7/F8 Muxes            |    <0.001 |     2028 |     32600 |            6.22 |
+|   Others                 |    <0.001 |      689 |       --- |             --- |
+|   F7/F8 Muxes            |    <0.001 |     2024 |     32600 |            6.21 |
 |   LUT as Shift Register  |    <0.001 |        5 |      9600 |            0.05 |
-| Signals                  |     0.005 |    22076 |       --- |             --- |
+| Signals                  |     0.005 |    22146 |       --- |             --- |
 | Block RAM                |     0.005 |       11 |        50 |           22.00 |
 | MMCM                     |     0.214 |        2 |         5 |           40.00 |
 | DSPs                     |     0.000 |       11 |        90 |           12.22 |
-| I/O                      |     0.133 |      143 |       250 |           57.20 |
+| I/O                      |     0.158 |      143 |       250 |           57.20 |
 | Static Power             |     0.073 |          |           |                 |
-| Total                    |     0.478 |          |           |                 |
+| Total                    |     0.504 |          |           |                 |
 +--------------------------+-----------+----------+-----------+-----------------+
 
 
@@ -78,8 +78,8 @@ Table of Contents
 +-----------+-------------+-----------+-------------+------------+-------------+-------------+------------+
 | Source    | Voltage (V) | Total (A) | Dynamic (A) | Static (A) | Powerup (A) | Budget (A)  | Margin (A) |
 +-----------+-------------+-----------+-------------+------------+-------------+-------------+------------+
-| Vccint    |       1.000 |     0.086 |       0.075 |      0.010 |       NA    | Unspecified | NA         |
-| Vccaux    |       1.800 |     0.190 |       0.177 |      0.013 |       NA    | Unspecified | NA         |
+| Vccint    |       1.000 |     0.087 |       0.076 |      0.010 |       NA    | Unspecified | NA         |
+| Vccaux    |       1.800 |     0.203 |       0.191 |      0.013 |       NA    | Unspecified | NA         |
 | Vcco33    |       3.300 |     0.000 |       0.000 |      0.000 |       NA    | Unspecified | NA         |
 | Vcco25    |       2.500 |     0.005 |       0.004 |      0.001 |       NA    | Unspecified | NA         |
 | Vcco18    |       1.800 |     0.000 |       0.000 |      0.000 |       NA    | Unspecified | NA         |
@@ -157,54 +157,54 @@ Table of Contents
 +----------------------------------------------+-----------+
 | Name                                         | Power (W) |
 +----------------------------------------------+-----------+
-| cyan_top                                     |     0.405 |
+| cyan_top                                     |     0.430 |
 |   clock_gen_inst                             |     0.109 |
 |     clk_inst0                                |     0.109 |
 |       inst                                   |     0.109 |
-|   mipi_integration_inst                      |     0.147 |
-|     inst_mipi_csi2_tx                        |     0.147 |
+|   mipi_integration_inst                      |     0.148 |
+|     inst_mipi_csi2_tx                        |     0.148 |
 |       gen_axis_fifo[0].inst_out_fifo         |     0.001 |
 |       gen_axis_fifo[1].inst_out_fifo         |     0.001 |
-|       inst_mipi_csi2_tx                      |     0.144 |
+|       inst_mipi_csi2_tx                      |     0.146 |
 |   reg_map_inst                               |     0.020 |
-|     reg_map_refact_inst                      |     0.020 |
-|   roic_channel_array_inst                    |     0.120 |
-|     gen_ti_roic_channel[0].ti_roic_top_inst  |     0.010 |
+|     reg_map_refact_inst                      |     0.019 |
+|   roic_channel_array_inst                    |     0.145 |
+|     gen_ti_roic_channel[0].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[10].ti_roic_top_inst |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[10].ti_roic_top_inst |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[11].ti_roic_top_inst |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[11].ti_roic_top_inst |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[1].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[1].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[2].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[2].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[3].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[3].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[4].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[4].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[5].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[5].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[6].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[6].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[7].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[7].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[8].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[8].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
-|     gen_ti_roic_channel[9].ti_roic_top_inst  |     0.010 |
+|       deserializer                           |     0.005 |
+|     gen_ti_roic_channel[9].ti_roic_top_inst  |     0.012 |
 |       bit_clock_gen                          |     0.007 |
-|       deserializer                           |     0.003 |
+|       deserializer                           |     0.005 |
 |   sequencer_wrapper_inst                     |     0.001 |
 |     seq_fsm_inst                             |     0.001 |
 +----------------------------------------------+-----------+

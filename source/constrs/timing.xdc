@@ -13,11 +13,8 @@ set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins -hierarc
 set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins -hierarchical -filter {REF_PIN_NAME == c1}]]
 
 # CDC false paths for verified synchronizers
-#set_false_path -from [get_pins {}] -to [get_pins {}]
-#set_false_path -from [get_pins {}] -to [get_pins {}]
-
-#set_false_path -from [get_pins {}] -to [get_pins {}]
-#set_false_path -from [get_pins {}] -to [get_pins {}]
+# NOTE: Template lines removed - use specific false paths below
+# General templates (lines 16-20) were obsolete and removed 2026-02-04
 
 #set_false_path -from [get_pins {roic_tg_gen_int/DF_SM4_fall_reg[6]/C}] -to [get_pins roic_tg_gen_int/DF_SM4_reg/D]
 #set_false_path -from [get_pins {roic_tg_gen_int/LPF2_rise_reg[6]/C}] -to [get_pins roic_tg_gen_int/LPF2_reg/D]
