@@ -79,13 +79,13 @@ graph TD
 
 | Clock Domain | Frequency | Period | Source | Primary Usage |
 |--------------|-----------|--------|--------|---------------|
-| **CLK_200MHZ** | 200 MHz | 5.0 ns | MMCM (c0) | MIPI DPHY, High-speed data path |
-| **CLK_100MHZ** | 100 MHz | 10.0 ns | MMCM (c1) | System control, Register map, EIM |
-| **CLK_25MHZ** | 25 MHz | 40.0 ns | MMCM (c2) | FSM sequencer, Timing generation |
+| **CLK_200MHZ** | 200 MHz | 5.0 ns | MMCM (dphy_clk) | MIPI DPHY, High-speed data path |
+| **CLK_100MHZ** | 100 MHz | 10.0 ns | MMCM (c0) | System control, Register map, EIM |
+| **CLK_20MHZ** | 20 MHz | 50.0 ns | MMCM (c1) | FSM sequencer, Timing generation |
 | **CLK_5MHZ** | N/A | N/A | (reserved) | Low-speed timers (future) |
 | **CLK_1MHZ** | N/A | N/A | (reserved) | Very low-speed (future) |
 
-*Note: Signal name uses legacy "s_clk_20mhz" but actual MMCM output is 25MHz
+*Note: Signal names use `s_clk_20mhz` but actual MMCM output c1 is 20MHz
 
 ### 2.3 Clock Relationships
 
@@ -93,9 +93,9 @@ graph TD
 |--------|-------------|-------|--------------|
 | 50MHz | 200MHz | 1:4 | Yes (same MMCM) |
 | 50MHz | 100MHz | 1:2 | Yes (same MMCM) |
-| 50MHz | 25MHz | 1:2 | Yes (same MMCM) |
+| 50MHz | 20MHz | 1:2.5 | Yes (same MMCM) |
 | 200MHz | 100MHz | 2:1 | **No** - Asynchronous groups |
-| 100MHz | 25MHz | 4:1 | **No** - Asynchronous groups |
+| 100MHz | 20MHz | 5:1 | **No** - Asynchronous groups |
 
 ### 2.4 Clock Module Details
 
@@ -107,9 +107,9 @@ graph TD
 - `MCLK_50M_p/n`: 50 MHz differential
 
 **Output Clocks**:
-- `dphy_clk`: 200 MHz (c0)
+- `dphy_clk`: 200 MHz (dphy_clk output)
 - `c0`: 100 MHz (system clock)
-- `c1`: 25 MHz (FSM clock)
+- `c1`: 20 MHz (FSM clock)
 
 **Status**:
 - `locked`: MMCM lock output
@@ -143,7 +143,7 @@ set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins -hierarc
 # Group 2: 100MHz system clock domain
 set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins -hierarchical -filter {REF_PIN_NAME == c0}]]
 
-# Group 3: 25MHz FSM clock domain
+# Group 3: 20MHz FSM clock domain
 set_clock_groups -asynchronous -group [get_clocks -of_objects [get_pins -hierarchical -filter {REF_PIN_NAME == c1}]]
 ```
 
@@ -232,11 +232,11 @@ clk_ctrl.xdc (Generated IP constraints)
 | Setup | < 9.0 ns | Leaving 1ns margin |
 | Hold | > 0.2 ns | Positive hold required |
 
-#### 25MHz Domain (40ns period)
+#### 20MHz Domain (50ns period)
 
 | Path Type | Required | Notes |
 |-----------|----------|-------|
-| Setup | < 38.0 ns | Leaving 2ns margin |
+| Setup | < 48.0 ns | Leaving 2ns margin |
 | Hold | > 0.2 ns | Positive hold required |
 
 ### 4.2 I/O Timing Requirements
@@ -301,7 +301,7 @@ graph LR
         B[EIM Processing]
     end
 
-    subgraph "25MHz Domain"
+    subgraph "20MHz Domain"
         C[Sequencer FSM]
     end
 
@@ -316,8 +316,8 @@ graph LR
 |---------------|-------------|------------|------------|-------|
 | 200MHz | 100MHz | 24-bit | async_fifo_24b | MIPI data path |
 | 100MHz | 200MHz | 24-bit | async_fifo_24b | Control feedback |
-| 100MHz | 25MHz | 1-bit | cdc_sync_3ff | Control signals |
-| 25MHz | 100MHz | 1-bit | cdc_sync_3ff | Status signals |
+| 100MHz | 20MHz | 1-bit | cdc_sync_3ff | Control signals |
+| 20MHz | 100MHz | 1-bit | cdc_sync_3ff | Status signals |
 
 ### 5.3 CDC Module Specifications
 
@@ -629,7 +629,7 @@ Clock Uncertainty:     0.500 ns
 | Module | File | Clock Domain | Notes |
 |--------|------|--------------|-------|
 | clock_gen_top | `clock_gen_top.sv` | 50MHz input | MMCM generates all clocks |
-| sequencer_fsm | `sequencer_fsm.sv` | 25MHz | Main sequencer |
+| sequencer_fsm | `sequencer_fsm.sv` | 20MHz | Main sequencer |
 | cdc_sync_3ff | `cdc_sync_3ff.sv` | Variable | 3-stage sync |
 | async_fifo_24b | `async_fifo_24b.sv` | 200MHz/100MHz | Gray code CDC |
 | mipi_integration | `mipi_integration.sv` | 200MHz | DPHY domain |
@@ -669,7 +669,7 @@ Clock        | Period | Freq   | Waveform ns
 -------------|--------|--------|------------
 s_dphy_200M  | 5.000  | 200.0  | {0.000 2.500}
 s_clk_100M   | 10.000 | 100.0  | {0.000 5.000}
-s_clk_20M    | 40.000 | 25.0   | {0.000 20.000}
+s_clk_20M    | 50.000 | 20.0   | {0.000 25.000}
 
 Timing Summary
 --------------

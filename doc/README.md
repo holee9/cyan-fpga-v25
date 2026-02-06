@@ -49,6 +49,7 @@ CYAN-FPGA 프로젝트는 ROIC(Readout Integrated Circuit) 제어 및 MIPI CSI-2
 - ✅ Week 9: init.sv FSM 3-block 스타일 리팩토링 완료 (M9-1)
 - ✅ Week 10: 최종 모듈 추출 완료, 총 33개 모듈
 - ✅ Week 11: **Bitstream 생성 완료, ERR-017 해결**
+- ✅ Week 12: **코드 리뷰 및 정리 완료** (미사용 신호 13개 제거)
 
 **Week 11 주요 성과(Milestones)**:
 - ✅ ERR-017: Bitstream Clock Routing 수정 (BUFG 명시적 인스턴스화)
@@ -80,6 +81,7 @@ Critical Issues: 0 ✅
 | FSM-002 | init.sv FSM Style | ✅ Fixed | - | init.sv를 3-block FSM로 리팩토링 (Week 9) |
 | TOP-001 | cyan_top Decomposition | ✅ Fixed | - | 9개 모듈 추출 (Weeks 5-10) |
 | ERR-017 | Clock Routing Error | ✅ Fixed | - | BUFG 명시적 인스턴스화, XDC 제약조건 업데이트 |
+| CLR-001 | Unused Signals | ✅ Fixed | - | 13개 미사용 게이트 신호 제거 (Week 12) |
 
 ### Open Issues
 
@@ -99,7 +101,7 @@ Critical Issues: 0 ✅
 | Synthesis Errors | - | - | - | 0 | 0 | ✅ PASS |
 | Bitstream Generation | - | - | - | ✅ | ✅ | ✅ PASS |
 | Module Count | 21 | 24 | 33 | 39 | - | ✅ 완료 |
-| cyan_top.sv Lines | 1261 | 1261 | 1316 | 1292 | <500 | 진행중 |
+| cyan_top.sv Lines | 1261 | 1261 | 1316 | 1282 | <500 | 진행중 |
 | Test Coverage | 23% | 23% | 23% | 23% | >70% | 계획됨 (Week 12) |
 | IP Files Tracked | 594 | 594 | 594 | 0 (.gitignore) | 0 | ✅ 달성 |
 
@@ -116,6 +118,10 @@ Critical Issues: 0 ✅
 | README.md (이 파일) | 프로젝트 개요 및 탐색 허브 | 시작점, 리소스 찾기 |
 | TECHNICAL_REFERENCE.md | 기술 사양, 모듈 상세, 리팩토링 가이드라인 | 구현 이해 |
 | LESSONS_LEARNED.md | 워크플로우 개선 및 모범 사례 | 프로세스 개선 |
+| **BUILD_PROCEDURE.md** | 빌드 절차 가이드 (빌드 스크립트 사용법) | 빌드/배포 시 |
+| **IP_CORE_GUIDE.md** | IP 코어 설정 및 재생성 가이드 | IP 수정/재생성 시 |
+| **RESOURCE_ANALYSIS.md** | 리소스/타이밍/전력 분석 보고서 | 성능 분석 시 |
+| **API_REGISTER_GUIDE.md** | SPI 인터페이스 및 레지스터 API | 펌웨어 제어 시 |
 
 ### 보관 문서(Archived Documentation)
 

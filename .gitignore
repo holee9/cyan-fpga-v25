@@ -57,10 +57,18 @@ simulation/tb_src/
 # EXCLUDE: All other simulation files
 simulation/mipi_rx_sim/
 simulation/*.log
+simulation/*.vcd
 simulation/*.wdb
 simulation/*.wcfg
 simulation/xsim.dir/
 simulation/xsim/
+simulation/transcript
+simulation/*.vstf
+simulation/*.jou
+simulation/*.ini
+simulation/work/
+simulation/nul
+simulation/&1
 
 #==============================================================================
 # Output & Reports (TRACK for release management)

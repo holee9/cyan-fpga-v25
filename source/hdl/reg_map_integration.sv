@@ -101,22 +101,10 @@ module reg_map_integration (
     output logic        ti_roic_deser_align_start,
     output logic  [4:0] ti_roic_deser_shift_set [11:0],
     input  logic  [4:0] ti_roic_deser_align_shift [11:0],
-    output logic [11:0] ti_roic_deser_align_done,
-
-    // Unused gate outputs (for compatibility)
-    output logic        gate_mode1,
-    output logic        gate_mode2,
-    output logic        gate_cs1,
-    output logic        gate_cs2,
-    output logic        gate_sel,
-    output logic        gate_ud,
-    output logic        gate_stv_mode,
-    output logic        gate_oepsn,
-    output logic        stv_sel_h,
-    output logic        stv_sel_l1,
-    output logic        stv_sel_r1,
-    output logic        stv_sel_l2,
-    output logic        stv_sel_r2
+    output logic [11:0] ti_roic_deser_align_done
+    // Removed unused gate outputs (Week 11 cleanup): gate_mode1, gate_mode2,
+    // gate_cs1, gate_cs2, gate_sel, gate_ud, gate_stv_mode, gate_oepsn,
+    // stv_sel_h, stv_sel_l1, stv_sel_r1, stv_sel_l2, stv_sel_r2
 );
 
     // SPI Parameters
@@ -217,21 +205,11 @@ module reg_map_integration (
         .max_v_count                (max_v_count),
         .max_h_count                (max_h_count),
         .csi2_word_count            (csi2_word_count),
-        .gate_mode1                 (gate_mode1),
-        .gate_mode2                 (gate_mode2),
-        .gate_cs1                   (gate_cs1),
-        .gate_cs2                   (gate_cs2),
-        .gate_sel                   (gate_sel),
-        .gate_ud                    (gate_ud),
-        .gate_stv_mode              (gate_stv_mode),
-        .gate_oepsn                 (gate_oepsn),
+        // Removed unused gate connections (Week 11 cleanup): gate_mode1, gate_mode2,
+        // gate_cs1, gate_cs2, gate_sel, gate_ud, gate_stv_mode, gate_oepsn,
+        // stv_sel_h, stv_sel_l1, stv_sel_r1, stv_sel_l2, stv_sel_r2
         .gate_lr1                   (sig_gate_lr1),
         .gate_lr2                   (sig_gate_lr2),
-        .stv_sel_h                  (stv_sel_h),
-        .stv_sel_l1                 (stv_sel_l1),
-        .stv_sel_r1                 (stv_sel_r1),
-        .stv_sel_l2                 (stv_sel_l2),
-        .stv_sel_r2                 (stv_sel_r2),
         .up_back_bias               (up_back_bias),
         .dn_back_bias               (down_back_bias),
 
