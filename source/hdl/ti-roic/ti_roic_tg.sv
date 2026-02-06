@@ -276,8 +276,22 @@ module ti_roic_tg (
     // assign tg_oe = ~s_gate_on; // Assign gate on signal to output enable
     // assign GATE_ON = s_gate_on; // Assign gate on signal
 
-    assign tg_row_cnt = s_hsync_count;
-    assign tg_col_cnt = counter[10:0];
+    // Registered outputs to avoid multi-driven net warnings
+    logic [15:0] tg_row_cnt_reg;
+    logic [10:0] tg_col_cnt_reg;
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            tg_row_cnt_reg <= 16'h0000;
+            tg_col_cnt_reg <= 11'h000;
+        end else begin
+            tg_row_cnt_reg <= s_hsync_count;
+            tg_col_cnt_reg <= counter[10:0];
+        end
+    end
+
+    assign tg_row_cnt = tg_row_cnt_reg;
+    assign tg_col_cnt = tg_col_cnt_reg;
     // ------------------------------------------------------------------------------
     assign sync_start = (str_counter[7:0] == '0) ? 1'b1 : 1'b0;
     assign readout_width = max_count; 

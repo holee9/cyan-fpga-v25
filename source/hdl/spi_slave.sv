@@ -1,6 +1,26 @@
 `timescale 1ns / 1ps
-// Week 10 Fix: Reset polarity changed from active-HIGH (posedge reset) to
-// active-LOW (negedge reset_n) for consistency with project reset convention
+
+///////////////////////////////////////////////////////////////////////////////
+// File: spi_slave.sv
+// Date: 2025.05.19
+// Designer: drake.lee
+// Description: SPI Slave Interface Module
+//              Configurable SPI slave with header-based packet structure
+//              Supports both read and write transactions to register space
+//              Uses edge detection for SPI clock (SCLK) and chip select (SSB)
+//
+// Parameters:
+//   - header:  Size of header field (default: 2 bits for R/W flag)
+//   - payload: Size of payload/data field (default: 8 bits)
+//   - addrsz:  Size of SPI address space (default: 7 bits)
+//   - pktsz:   Total packet size = header + addrsz + payload
+//
+// Revision History:
+//    2025.05.19 - Initial creation
+//    Week 10    - Reset polarity changed from active-HIGH (posedge reset) to
+//                 active-LOW (negedge reset_n) for consistency with project
+//                 reset convention
+///////////////////////////////////////////////////////////////////////////////
 
 module spi_slave
 		#(

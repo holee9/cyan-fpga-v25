@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-// `include	"./p_define.sv"
+`include "../p_define_refacto.sv"
 
 //==============================================================================
 // Project      : TI-ROIC

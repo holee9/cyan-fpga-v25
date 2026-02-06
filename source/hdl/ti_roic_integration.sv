@@ -33,17 +33,16 @@ module ti_roic_integration (
     input  logic        s_roic_tp_sel,
     input  logic        aed_detect_skip_oe,
     input  logic        fsm_read_index,
-    input  logic        gen_sync_start_3ff,
-
-    // Counters
-    input  logic [15:0] tg_row_cnt,
-    input  logic [10:0] tg_col_cnt,
 
     // SPI outputs
     output logic [11:0] s_roic_sdio,
     output logic        RF_SPI_SCK,
     output logic        RF_SPI_SDI,
     output logic        s_rf_spi_sen,
+
+    // Counter outputs (from ti_roic_tg)
+    output logic [15:0] tg_row_cnt,
+    output logic [10:0] tg_col_cnt,
 
     // Timing outputs
     output logic        s_roic_sync_out,
@@ -75,6 +74,8 @@ module ti_roic_integration (
     logic        s_spiReady;
     logic        s_spidut_en_1d;
     logic        s_spidut_en_2d;
+    logic [15:0] tg_row_cnt_int;
+    logic [10:0] tg_col_cnt_int;
 
     //==========================================================================
     // TI ROIC SPI Interface
@@ -126,10 +127,10 @@ module ti_roic_integration (
         .reg_en             (ti_roic_reg_addr[15]),
         .reg_addr           (ti_roic_reg_addr[7:0]),
         .reg_data           (ti_roic_reg_data),
-        .sync_start         (gen_sync_start_3ff),
+        .sync_start         (),  // sync_start is generated internally by ti_roic_tg based on str_counter
         .readout_width      (),
-        .tg_row_cnt         (tg_row_cnt),
-        .tg_col_cnt         (tg_col_cnt),
+        .tg_row_cnt         (tg_row_cnt_int),
+        .tg_col_cnt         (tg_col_cnt_int),
         .roic_sync_out      (s_roic_sync_out),
         .roic_a_bz          (s_roic_a_bz),
         .tg_stv             (s_tg_stv),
@@ -150,5 +151,11 @@ module ti_roic_integration (
         .DF_SM4             (s_DF_SM4),
         .DF_SM5             (s_DF_SM5)
     );
+
+    //==========================================================================
+    // Output Assignments
+    //==========================================================================
+    assign tg_row_cnt = tg_row_cnt_int;
+    assign tg_col_cnt = tg_col_cnt_int;
 
 endmodule

@@ -225,20 +225,6 @@ module cyan_top (
     logic s_reg_data_index;
     logic s_read_data_en;
 
-    // Unused gate outputs from reg_map_integration
-    logic unused_gate_mode1;
-    logic unused_gate_mode2;
-    logic unused_gate_cs1;
-    logic unused_gate_cs2;
-    logic unused_gate_sel;
-    logic unused_gate_ud;
-    logic unused_gate_stv_mode;
-    logic unused_gate_oepsn;
-    logic unused_stv_sel_h;
-    logic unused_stv_sel_l1;
-    logic unused_stv_sel_r1;
-    logic unused_stv_sel_l2;
-    logic unused_stv_sel_r2;
 
     logic [23:0] s_read_rx_data_a;
     logic [23:0] s_read_rx_data_b;
@@ -316,7 +302,7 @@ module cyan_top (
     logic aed_enable_o;
     logic stv_mask_o;
     logic csi_mask_o;
-    logic idle_elable_o;
+    logic idle_enable_o;
     logic iterate_exist_o;
     logic s_wait_sync;
     logic [2:0] s_wait_sync_dly;
@@ -523,20 +509,10 @@ module cyan_top (
         .ti_roic_deser_align_start (ti_roic_deser_align_start),
         .ti_roic_deser_shift_set   (ti_roic_deser_shift_set),
         .ti_roic_deser_align_shift (ti_roic_deser_align_shift),
-        .ti_roic_deser_align_done  (ti_roic_deser_align_done),
-        .gate_mode1               (unused_gate_mode1),
-        .gate_mode2               (unused_gate_mode2),
-        .gate_cs1                 (unused_gate_cs1),
-        .gate_cs2                 (unused_gate_cs2),
-        .gate_sel                 (unused_gate_sel),
-        .gate_ud                  (unused_gate_ud),
-        .gate_stv_mode            (unused_gate_stv_mode),
-        .gate_oepsn               (unused_gate_oepsn),
-        .stv_sel_h                (unused_stv_sel_h),
-        .stv_sel_l1               (unused_stv_sel_l1),
-        .stv_sel_r1               (unused_stv_sel_r1),
-        .stv_sel_l2               (unused_stv_sel_l2),
-        .stv_sel_r2               (unused_stv_sel_r2)
+        .ti_roic_deser_align_done  (ti_roic_deser_align_done)
+        // Removed unused gate outputs: gate_mode1, gate_mode2, gate_cs1, gate_cs2,
+        // gate_sel, gate_ud, gate_stv_mode, gate_oepsn, stv_sel_h, stv_sel_l1,
+        // stv_sel_r1, stv_sel_l2, stv_sel_r2 (Week 11 cleanup)
     );
 
     // assign disable_aed_read_xao = 1'b1; // For Gemini, AED read XAO is always enabled
@@ -905,7 +881,6 @@ module cyan_top (
         .s_roic_tp_sel         (s_roic_tp_sel),
         .aed_detect_skip_oe    (s_aed_detect_skip_oe_o),
         .fsm_read_index        (s_sync_fsm_read_index),
-        .gen_sync_start_3ff    (gen_sync_start_3ff),
 
         // Counters
         .tg_row_cnt            (tg_row_cnt),

@@ -1,11 +1,23 @@
+# =============================================================================
 # Vivado Build Script for xdaq_top
+# =============================================================================
+# Description: Automated bitstream generation for CYAN-FPGA project
+#
 # Vivado Path: D:\AMDDesignTools\2025.2\Vivado
 # Project: D:\workspace\gittea-work\v2025\CYAN-FPGA\xdaq_top\build\xdaq_top.xpr
+#
+# Build Steps:
+#   1. Synthesis  - RTL to netlist
+#   2. Implementation - Netlist to placed/routed design
+#   3. Bitstream - Generate programming file
+# =============================================================================
 
 # Open project
 open_project D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_top.xpr
 
+# =============================================================================
 # Step 1: Synthesis
+# =============================================================================
 puts "\n=========================================="
 puts "STEP 1: Running Synthesis..."
 puts "=========================================="
@@ -19,10 +31,20 @@ if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
 }
 puts "Synthesis completed successfully!"
 
+# =============================================================================
 # Step 2: Implementation
+# =============================================================================
 puts "\n=========================================="
 puts "STEP 2: Running Implementation..."
 puts "=========================================="
+
+# Set implementation strategy to fix hold time violations
+set_property STRATEGY Performance_ExplorePostRoutePhysOpt [get_runs impl_1]
+
+# Enable post-route physical optimization for hold time fixing
+set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
+set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE Explore [get_runs impl_1]
+
 reset_run impl_1
 launch_runs impl_1 -jobs 4
 wait_on_run impl_1
@@ -33,7 +55,9 @@ if {[get_property PROGRESS [get_runs impl_1]] != "100%"} {
 }
 puts "Implementation completed successfully!"
 
+# =============================================================================
 # Step 3: Bitstream Generation
+# =============================================================================
 puts "\n=========================================="
 puts "STEP 3: Generating Bitstream..."
 puts "=========================================="
@@ -46,7 +70,9 @@ if {![file exists D:/workspace/gittea-work/v2025/CYAN-FPGA/xdaq_top/build/xdaq_t
 }
 puts "Bitstream generated successfully!"
 
-# Summary
+# =============================================================================
+# Build Summary
+# =============================================================================
 puts "\n=========================================="
 puts "BUILD SUMMARY"
 puts "=========================================="

@@ -35,7 +35,6 @@
 //     - ACLK: Clock signals for analog readout operations
 //
 // ---------------------------------------------------------------------------------
-// `include "./p_define.sv"
 `include	"./p_define_refacto.sv"
 `timescale 1ns/1ps
 

@@ -1,8 +1,44 @@
 # CYAN-FPGA Project: Lessons Learned & Patterns
 
-**Last Updated**: 2025-02-03
+**Last Updated**: 2026-02-04
 **Project**: cyan-fpga-v25
 **Repository**: https://github.com/holee9/cyan-fpga-v25
+
+---
+
+## 0. Week 11: Bitstream Generation Success
+
+### ERR-017: Clock Routing Fix
+
+**Problem**: `Place 30-574 - IOB driving a BUFG must use a CCIO in the same half side`
+
+**Root Cause**: Implicit BUFG inference from direct assignment
+```systemverilog
+// WRONG - Implicit BUFG inference
+assign fclk_out = fclk_in_int;
+```
+
+**Solution**: Explicit BUFG instantiation
+```systemverilog
+// CORRECT - Explicit BUFG
+BUFG fclk_bufg_inst (
+    .I(fclk_in_int),
+    .O(fclk_out)
+);
+```
+
+**Lesson Learned**: Clock buffers must ALWAYS be explicitly instantiated. Never rely on automatic inference from direct assignments.
+
+### Build Automation Complete
+
+**build_bitstream.tcl** - Automated synthesis, implementation, and bitstream generation with error checking
+
+**Usage**:
+```bash
+vivado -mode batch -source build_bitstream.tcl -log build_bitstream.log -nojournal
+```
+
+**Output Files**: cyan_top.bit, .bin, .mcs, .ltx generated successfully
 
 ---
 
