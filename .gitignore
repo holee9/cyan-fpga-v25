@@ -101,9 +101,13 @@ $RECYCLE.BIN/
 .vscode/
 
 #==============================================================================
-# Claude Code (EXCLUDED)
-#==============================================================================
-.claude/
+# Claude Code (PARTIAL - Track rules and hooks)
+#================================================================<arg_value>.claude/session*/
+.claude/plans/
+.claude/memo/
+.claude/context/
+.claude/index/
+# KEEP: .claude/rules/ and .claude/hooks/ for project rules
 
 #==============================================================================
 # Backup Files (EXCLUDED)
