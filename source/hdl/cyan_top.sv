@@ -881,7 +881,6 @@ module cyan_top (
         .s_roic_tp_sel         (s_roic_tp_sel),
         .aed_detect_skip_oe    (s_aed_detect_skip_oe_o),
         .fsm_read_index        (s_sync_fsm_read_index),
-        .gen_sync_start_3ff    (gen_sync_start_3ff),
 
         // Counters
         .tg_row_cnt            (tg_row_cnt),

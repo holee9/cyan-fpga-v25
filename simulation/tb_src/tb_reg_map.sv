@@ -2,7 +2,7 @@
 
 `include "../source/hdl/p_define_refacto.sv"
 
-module tb_reg_map_gemini_2;
+module tb_reg_map;
 
     // Parameters
     localparam CLK_PERIOD_SPI = (10**3)/5;	// time unit : ns

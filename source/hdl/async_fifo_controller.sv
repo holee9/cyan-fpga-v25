@@ -177,10 +177,10 @@ module async_fifo_controller (
 
     property no_data_loss;
         @(posedge eim_clk) disable iff (!rst_n_eim)
-            (s_read_data_valid_eim && s_fifo_full) |->
-                $error("[FIFO_CTRL] Data loss - FIFO full!");
+            not (s_read_data_valid_eim && s_fifo_full);
     endproperty
-    assert property (no_data_loss);
+    assert property (no_data_loss)
+        else $error("[FIFO_CTRL] Data loss - FIFO full!");
 
     // CDC path delay check
     covergroup fifo_cg @(posedge sys_clk);

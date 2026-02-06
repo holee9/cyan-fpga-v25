@@ -52,8 +52,8 @@ proc run_single_test {test_name tb_file} {
     # Extract testbench module name (remove _tb suffix if present)
     set tb_module $test_name
 
-    # Run simulation (remove -c to avoid nested vsim, use quit -sim to exit simulation only)
-    if {[catch {vsim -lib work $tb_module -do "run -all; quit -sim"} result]} {
+    # Run simulation - use onfinish to detect completion without quitting
+    if {[catch {vsim -lib work $tb_module -do "run -all; onfinish exit"} result]} {
         puts "FAILED: Simulation error for $test_name"
         puts $result
         incr failed_tests
